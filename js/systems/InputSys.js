@@ -1,6 +1,7 @@
 import { gameData } from "../core/GameData.js";
 import { AudioSys } from "./AudioSys.js";
 import { ParticleSys } from "./ParticleSys.js";
+import { MissionType } from "../core/Constants.js";
 
 export const InputSys = {
   comboTimer: null,

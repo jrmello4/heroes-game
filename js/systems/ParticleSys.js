@@ -1,28 +1,60 @@
 export const ParticleSys = {
+  pool: [],
+  maxParticles: 30,
+  container: null,
+
+  init() {
+    this.container = document.body;
+    for (let i = 0; i < this.maxParticles; i++) {
+      const el = document.createElement("div");
+      el.className =
+        "font-comic font-bold absolute pointer-events-none z-50 hidden";
+      el.style.textShadow = "2px 2px 0 #000";
+      this.container.appendChild(el);
+      this.pool.push({ element: el, inUse: false });
+    }
+  },
+
+  getParticle() {
+    for (let particle of this.pool) {
+      if (!particle.inUse) {
+        particle.inUse = true;
+        return particle;
+      }
+    }
+    return null;
+  },
+
   spawnFloatingText(x, y, text, colorClass, scale = 1.0) {
+    if (!this.container) this.init();
+
     try {
-      const particle = window.getParticleFromPool();
+      const particle = this.getParticle();
       if (!particle) return;
 
       const el = particle.element;
+
+      // Reset animations by forcing reflow
+      el.style.animation = "none";
+      el.offsetHeight; /* trigger reflow */
+      el.style.animation = "floatUp 0.8s ease-out forwards";
+
       el.innerText = text;
       el.className = `font-comic font-bold absolute pointer-events-none z-50 ${colorClass}`;
       el.style.left = x + "px";
       el.style.top = y + "px";
       el.style.fontSize = 24 * scale + "px";
       el.style.textShadow = "2px 2px 0 #000";
-      el.style.animation = "floatUp 0.8s ease-out forwards";
-      // REMOVIDO: el.style.willChange = "transform, opacity";
       el.classList.remove("hidden");
 
       const cleanup = () => {
         if (particle.inUse) {
-          window.returnParticleToPool(particle);
+          particle.inUse = false;
+          el.classList.add("hidden");
         }
       };
 
       setTimeout(cleanup, 800);
-      el.addEventListener("animationend", cleanup, { once: true });
     } catch (error) {
       console.warn("ParticleSys: Erro ao criar partícula", error);
     }
