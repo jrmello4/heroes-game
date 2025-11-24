@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Herói Clicker: Ultimate Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --comic-black: #0f0f0f; --comic-yellow: #facc15; --comic-red: #ef4444; }
+        * { touch-action: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; box-sizing: border-box; }
+        body { font-family: 'Roboto', sans-serif; background-color: #1a1a1a; overflow: hidden; user-select: none; -webkit-user-select: none; }
+        .font-comic { font-family: 'Bangers', cursive; letter-spacing: 1.5px; }
+        
+        /* UI Elements */
+        .comic-box {
+            background: white;
+            border: 3px solid var(--comic-black);
+            box-shadow: 4px 4px 0px var(--comic-black);
+            position: relative;
+        }
+        .comic-btn {
+            border: 3px solid var(--comic-black);
+            box-shadow: 0px 4px 0px var(--comic-black);
+            transition: all 0.1s;
+            position: relative;
+            overflow: hidden;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+        .comic-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0px 0px 0px var(--comic-black); }
+        .comic-btn:disabled { opacity: 0.6; filter: grayscale(100%); cursor: not-allowed; transform: translateY(4px); box-shadow: none; }
+        
+        /* Animations */
+        .villain-hit { animation: hitAnim 0.1s ease-in-out; }
+        @keyframes hitAnim { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(0.9) rotate(5deg); filter: brightness(2) sepia(1) hue-rotate(-50deg); } 100% { transform: scale(1); filter: brightness(1); } }
+        
+        .shake-screen { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake { 10%, 90% { transform: translate3d(-2px, 0, 0); } 20%, 80% { transform: translate3d(4px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-6px, 0, 0); } 40%, 60% { transform: translate3d(6px, 0, 0); } }
+
+        .pulse-glow { animation: pulseGlow 2s infinite; }
+        @keyframes pulseGlow { 0% { box-shadow: 0 0 5px #fbbf24; } 50% { box-shadow: 0 0 20px #f59e0b; } 100% { box-shadow: 0 0 5px #fbbf24; } }
+
+        /* Floating Text is now handled by Canvas, but keeping CSS for UI overlays */
+        .crit-flash { position: absolute; inset: 0; background: white; opacity: 0; pointer-events: none; z-index: 50; transition: opacity 0.1s; }
+        .crit-flash.active { opacity: 0.3; }
+
+        /* Weak Point */
+        .weak-point {
+            position: absolute; width: 50px; height: 50px;
+            background: radial-gradient(circle, #ef4444 30%, transparent 30%, #ef4444 90%);
+            border: 3px solid #fff; border-radius: 50%;
+            cursor: crosshair; z-index: 60;
+            animation: wpPulse 0.6s infinite alternate;
+            box-shadow: 0 0 15px #ef4444;
+        }
+        @keyframes wpPulse { from { transform: scale(1); } to { transform: scale(1.15); } }
+
+        /* Custom Scroll */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #374151; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #facc15; border-radius: 3px; }
+
+        /* Backgrounds */
+        .bg-pattern {
+            background-image: radial-gradient(#ffffff 15%, transparent 16%), radial-gradient(#ffffff 15%, transparent 16%);
+            background-size: 20px 20px; background-position: 0 0, 10px 10px; opacity: 0.1;
+        }
+        .bg-city { background: linear-gradient(to bottom, #1e3a8a, #60a5fa); }
+        .bg-sewer { background: linear-gradient(to bottom, #064e3b, #34d399); }
+        .bg-space { background: linear-gradient(to bottom, #111827, #4c1d95); }
+        
+        #canvasOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 40; }
+    </style>
+</head>
+<body class="h-[100dvh] w-full flex flex-col md:flex-row text-gray-800 overflow-hidden" id="mainBody">
+
+    <div id="startOverlay" class="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center text-white cursor-pointer">
+        <h1 class="font-comic text-6xl text-yellow-400 mb-4 animate-bounce">HERÓI CLICKER</h1>
+        <p class="text-xl mb-8 font-bold">Toque para Começar</p>
+        <i class="fas fa-play-circle text-6xl text-red-500"></i>
+    </div>
+
+    <div id="critFlash" class="crit-flash"></div>
+
+    <div id="offlineModal" class="fixed inset-0 bg-black/90 z-[90] hidden flex items-center justify-center px-4">
+        <div class="comic-box p-6 max-w-md w-full bg-white text-center">
+            <h2 class="font-comic text-3xl text-blue-600 mb-2">RELATÓRIO DE PATRULHA</h2>
+            <p class="text-gray-600 font-bold mb-4">Seus heróis trabalharam enquanto você estava fora!</p>
+            <div class="bg-gray-100 p-4 rounded border-2 border-black mb-4">
+                <p class="text-sm text-gray-500 uppercase font-bold">Tempo Offline</p>
+                <p id="offlineTime" class="font-comic text-xl">00:00:00</p>
+                <div class="h-px bg-gray-300 my-2"></div>
+                <p class="text-sm text-gray-500 uppercase font-bold">Ouro Coletado</p>
+                <p id="offlineGold" class="font-comic text-3xl text-yellow-500 drop-shadow-sm">0</p>
+            </div>
+            <button onclick="closeOfflineModal()" class="comic-btn bg-green-500 text-white w-full py-3 text-xl">RECEBER</button>
+        </div>
+    </div>
+
+    <div class="md:w-1/4 w-full bg-white border-b-4 md:border-b-0 md:border-r-4 border-black flex flex-row md:flex-col p-2 z-30 shadow-xl relative">
+        <div class="hidden md:block text-center mb-4 p-4 bg-yellow-300 border-4 border-black transform -rotate-1">
+            <h1 class="font-comic text-4xl text-red-600 drop-shadow-[2px_2px_0_#000]">ULTIMATE HERO</h1>
+        </div>
+
+        <div class="flex md:flex-col gap-2 w-full">
+            <div class="comic-box p-2 flex-1 flex flex-col justify-center bg-yellow-50 min-w-[100px]">
+                <div class="flex justify-between text-[10px] font-black text-gray-400 uppercase">
+                    <span>Ouro</span>
+                    <span id="prestigeCount" class="text-purple-600 hidden"><i class="fas fa-gem"></i> 0</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-coins text-yellow-500 text-lg drop-shadow-sm"></i>
+                    <span id="scoreDisplay" class="font-comic text-2xl text-gray-800 leading-none">0</span>
+                </div>
+            </div>
+            <div class="comic-box p-2 flex-1 flex flex-col justify-center bg-red-50 min-w-[100px]">
+                <p class="text-[10px] font-black text-gray-400 uppercase">Dano/Seg</p>
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-meteor text-red-500 text-lg"></i>
+                    <span id="dpsDisplay" class="font-comic text-2xl text-gray-800 leading-none">0</span>
+                </div>
+            </div>
+            <button class="md:hidden comic-btn bg-gray-800 text-white w-12" onclick="toggleMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+
+        <div class="hidden md:flex flex-1 flex-col mt-4 gap-2 overflow-hidden">
+            <div class="comic-box p-2 bg-blue-50 flex-1 overflow-y-auto custom-scroll">
+                <h3 class="font-comic text-lg text-blue-600 border-b-2 border-blue-200 mb-2">Conquistas</h3>
+                <div id="miniAchievementList" class="space-y-1"></div>
+            </div>
+            
+            <div class="comic-box p-3 bg-gray-800 text-white mt-auto">
+                <div class="flex justify-between text-sm font-bold"><span>Nível:</span> <span id="levelDisplay" class="text-yellow-400">1</span></div>
+                <div class="flex justify-between text-sm font-bold"><span>Clique:</span> <span id="clickPowerDisplay" class="text-red-400">0</span></div>
+                <button onclick="toggleMenu()" class="comic-btn bg-yellow-400 text-black w-full mt-2 py-1 text-sm hover:bg-yellow-300">OPÇÕES</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="relative flex-1 h-[50vh] md:h-full flex flex-col items-center justify-center overflow-hidden bg-city transition-all duration-1000" id="gameZone">
+        <div class="absolute inset-0 bg-pattern"></div>
+        <canvas id="canvasOverlay"></canvas>
+
+        <div id="bossTimerContainer" class="absolute top-4 w-64 z-20 hidden">
+            <div class="comic-box bg-red-600 text-white px-2 py-1 transform -rotate-1 flex justify-between font-comic text-lg">
+                <span class="animate-pulse">⚠️ CHEFE ⚠️</span>
+                <span id="bossTimerText">30s</span>
+            </div>
+            <div class="w-full h-3 bg-black border-2 border-black mt-1">
+                <div id="bossTimerBar" class="h-full bg-yellow-400" style="width: 100%"></div>
+            </div>
+        </div>
+
+        <div class="relative z-20 w-64 text-center mb-4 select-none pointer-events-none">
+            <h2 id="villainName" class="font-comic text-3xl text-white drop-shadow-[2px_2px_0_#000] stroke-black mb-1">Vilão</h2>
+            <div class="w-full h-6 bg-gray-900 border-2 border-white rounded-full overflow-hidden relative shadow-lg">
+                <div id="hpBar" class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-100" style="width: 100%"></div>
+                <p id="hpText" class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">20 / 20</p>
+            </div>
+        </div>
+
+        <div id="clickZone" class="relative z-20 flex-1 w-full flex items-center justify-center cursor-pointer group select-none outline-none">
+            <div id="villainSprite" class="text-[8rem] md:text-[10rem] transition-transform filter drop-shadow-2xl text-white relative">
+                <i id="villainIcon" class="fas fa-mask"></i>
+                </div>
+        </div>
+
+        <div id="comboContainer" class="absolute bottom-24 md:bottom-32 right-4 md:right-10 z-10 hidden transform rotate-6 transition-all">
+            <h1 id="comboText" class="font-comic text-5xl text-yellow-400 drop-shadow-[3px_3px_0_#000] animate-bounce">x15</h1>
+            <p class="text-white font-black text-xs bg-red-600 px-1 transform -rotate-3 inline-block border border-black">SUPER COMBO</p>
+        </div>
+
+        <div class="w-full max-w-md px-4 pb-4 grid grid-cols-3 gap-3 z-30">
+            <button id="skill1" class="comic-btn bg-orange-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50" onclick="activateSkill('fury')">
+                <i class="fas fa-fire text-xl mb-1"></i>
+                <span class="text-[10px] leading-none">FÚRIA</span>
+                <div id="cd-fury" class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"></div>
+            </button>
+            <button id="skill2" class="comic-btn bg-blue-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50" onclick="activateSkill('crit')">
+                <i class="fas fa-crosshairs text-xl mb-1"></i>
+                <span class="text-[10px] leading-none">MIRA</span>
+                <div id="cd-crit" class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"></div>
+            </button>
+            <button id="skill3" class="comic-btn bg-green-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50" onclick="activateSkill('team')">
+                <i class="fas fa-users text-xl mb-1"></i>
+                <span class="text-[10px] leading-none">LIGA</span>
+                <div id="cd-team" class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"></div>
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full md:w-1/4 h-flex-1 md:h-full bg-gray-100 border-l-0 md:border-l-4 border-black flex flex-col z-30 shadow-xl">
+        <div class="flex border-b-4 border-black bg-white">
+            <button onclick="switchTab('upgrades')" id="tabUpgrades" class="flex-1 py-3 font-comic text-xl bg-yellow-300 border-r-2 border-black relative top-[2px]">
+                <i class="fas fa-dumbbell"></i>
+            </button>
+            <button onclick="switchTab('heroes')" id="tabHeroes" class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 border-r-2 border-black hover:bg-gray-100">
+                <i class="fas fa-mask"></i>
+            </button>
+            <button onclick="switchTab('artifacts')" id="tabArtifacts" class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 hover:bg-gray-100">
+                <i class="fas fa-trophy"></i>
+            </button>
+        </div>
+
+        <div id="panelUpgrades" class="flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"></div>
+        <div id="panelHeroes" class="hidden flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"></div>
+        <div id="panelArtifacts" class="hidden flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-2 custom-scroll pb-20 md:pb-4 bg-gray-100 content-start"></div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm">
+        <div class="comic-box p-6 w-full max-w-sm bg-purple-900 border-4 border-white text-center">
+            <h2 class="font-comic text-4xl text-yellow-400 mb-2">Menu do Multiverso</h2>
+            
+            <div class="bg-black/30 p-4 rounded mb-4 text-white text-left text-sm space-y-1">
+                <div class="flex justify-between"><span>Som:</span> <button onclick="toggleMute()" id="muteBtn" class="font-bold text-yellow-400">LIGADO</button></div>
+                <div class="flex justify-between"><span>Partículas:</span> <button onclick="toggleParticles()" id="partBtn" class="font-bold text-yellow-400">LIGADO</button></div>
+                <hr class="border-gray-500 my-2">
+                <div class="flex justify-between"><span>Jogando Desde:</span> <span id="startTimeDisplay" class="text-gray-300">-</span></div>
+            </div>
+
+            <div class="mb-6">
+                <p class="text-purple-200 text-xs mb-1">Reinicie para ganhar Cristais (+10% DPS cada)</p>
+                <div class="bg-white text-black font-bold p-2 mb-2 rounded">
+                    Cristais a Receber: <span id="prestigeGain" class="text-purple-600 text-xl">0</span>
+                </div>
+                <button onclick="doPrestige()" id="btnPrestige" class="comic-btn bg-red-500 text-white w-full py-2 text-lg hover:bg-red-600 disabled:opacity-50">
+                    RESETAR MULTIVERSO
+                </button>
+            </div>
+            
+            <div class="flex gap-2">
+                <button onclick="manualSave()" class="flex-1 comic-btn bg-blue-500 text-white py-2">SALVAR</button>
+                <button onclick="toggleMenu()" class="flex-1 comic-btn bg-white text-black py-2">VOLTAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notificationArea" class="fixed top-20 right-4 flex flex-col space-y-2 z-[100] pointer-events-none items-end"></div>
+
+    <script>
+        // --- AUDIO SYSTEM (Web Audio API) ---
+        const AudioSys = {
+            ctx: null,
+            muted: false,
+            init() {
+                window.AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+            },
+            playTone(freq, type, duration, vol = 0.1) {
+                if (this.muted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick() { this.playTone(Math.random() * 100 + 300, 'square', 0.1, 0.05); },
+            playBuy() { this.playTone(600, 'sine', 0.1, 0.1); setTimeout(() => this.playTone(800, 'sine', 0.2, 0.1), 100); },
+            playCrit() { this.playTone(150, 'sawtooth', 0.3, 0.1); this.playTone(100, 'sawtooth', 0.3, 0.1); },
+            playLevelUp() { 
+                [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.playTone(f, 'square', 0.2, 0.1), i * 100));
+            }
+        };
+
+        // --- PARTICLE SYSTEM (Canvas) ---
+        const ParticleSys = {
+            canvas: document.getElementById('canvasOverlay'),
+            ctx: document.getElementById('canvasOverlay').getContext('2d'),
+            particles: [],
+            texts: [],
+            enabled: true,
+            width: 0,
+            height: 0,
+            words: ["POW!", "BAM!", "SMASH!", "ZAP!", "CRUSH!", "BOOM!"],
+            colors: ["#ef4444", "#facc15", "#3b82f6", "#ffffff"],
+
+            resize() {
+                this.width = this.canvas.offsetWidth;
+                this.height = this.canvas.offsetHeight;
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+            },
+
+            spawn(x, y, type = 'hit') {
+                if (!this.enabled) return;
+                const rect = this.canvas.getBoundingClientRect();
+                const relX = x - rect.left;
+                const relY = y - rect.top;
+
+                // Sparks
+                for(let i=0; i<8; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = Math.random() * 5 + 2;
+                    this.particles.push({
+                        x: relX, y: relY,
+                        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+                        life: 1.0, color: this.colors[Math.floor(Math.random() * this.colors.length)],
+                        size: Math.random() * 4 + 2
+                    });
+                }
+
+                // Floating Text
+                if (type === 'text' || type === 'crit') {
+                    const word = this.words[Math.floor(Math.random() * this.words.length)];
+                    this.texts.push({
+                        x: relX, y: relY,
+                        text: type === 'crit' ? "CRÍTICO!" : word,
+                        life: 1.0,
+                        vy: -2,
+                        scale: type === 'crit' ? 1.5 : 1,
+                        color: type === 'crit' ? '#facc15' : '#ffffff',
+                        rotation: (Math.random() * 0.4) - 0.2
+                    });
+                }
+            },
+
+            update() {
+                this.ctx.clearRect(0, 0, this.width, this.height);
+                
+                // Update Particles
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    let p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.2; // Gravity
+                    p.life -= 0.05;
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                        continue;
+                    }
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.globalAlpha = p.life;
+                    this.ctx.beginPath();
+                    this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                // Update Texts
+                this.ctx.font = "900 30px 'Bangers'";
+                this.ctx.textAlign = "center";
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeStyle = "black";
+                
+                for (let i = this.texts.length - 1; i >= 0; i--) {
+                    let t = this.texts[i];
+                    t.y += t.vy;
+                    t.life -= 0.02;
+                    if (t.life <= 0) {
+                        this.texts.splice(i, 1);
+                        continue;
+                    }
+                    this.ctx.save();
+                    this.ctx.translate(t.x, t.y);
+                    this.ctx.rotate(t.rotation);
+                    this.ctx.scale(t.scale, t.scale);
+                    this.ctx.globalAlpha = t.life;
+                    this.ctx.fillStyle = t.color;
+                    this.ctx.strokeText(t.text, 0, 0);
+                    this.ctx.fillText(t.text, 0, 0);
+                    this.ctx.restore();
+                }
+                this.ctx.globalAlpha = 1;
+            }
+        };
+
+        // --- GAME DATA & LOGIC ---
+        const gameData = {
+            score: 0,
+            crystals: 0,
+            totalScoreRun: 0,
+            villainsDefeated: 0,
+            totalClicks: 0,
+            startTime: Date.now(),
+            lastSaveTime: Date.now(),
+            level: 1,
+            clickDamage: 1,
+            autoDamage: 0,
+            villainMaxHp: 20,
+            villainCurrentHp: 20,
+            combo: 0,
+            achievements: {
+                kill10: { id: 'kill10', name: 'Vigilante Iniciante', desc: 'Derrote 10 vilões', req: 10, type: 'kills', reward: 0.1, done: false },
+                kill100: { id: 'kill100', name: 'Protetor da Cidade', desc: 'Derrote 100 vilões', req: 100, type: 'kills', reward: 0.2, done: false },
+                click500: { id: 'click500', name: 'Dedos Rápidos', desc: '500 Cliques', req: 500, type: 'clicks', reward: 0.1, done: false },
+                level10: { id: 'level10', name: 'Subindo de Rank', desc: 'Alcance Nível 10', req: 10, type: 'level', reward: 0.2, done: false }
+            },
+            upgrades: {
+                gym: { id: 'gym', name: 'Academia de Boxe', baseCost: 15, count: 0, boost: 1, icon: 'fa-dumbbell', type: 'click' },
+                brass: { id: 'brass', name: 'Soco Inglês', baseCost: 100, count: 0, boost: 5, icon: 'fa-hand-rock', type: 'click' },
+                gadget: { id: 'gadget', name: 'Batarangue', baseCost: 500, count: 0, boost: 15, icon: 'fa-bullseye', type: 'click' },
+                serum: { id: 'serum', name: 'Soro Experimental', baseCost: 2000, count: 0, boost: 50, icon: 'fa-flask', type: 'click' },
+                suit: { id: 'suit', name: 'Traje de Nanotech', baseCost: 10000, count: 0, boost: 200, icon: 'fa-user-astronaut', type: 'click' }
+            },
+            heroes: {
+                kid: { id: 'kid', name: 'Ajudante Mirim', baseCost: 50, count: 0, dps: 2, icon: 'fa-user-ninja', color: 'text-red-600' },
+                vigilante: { id: 'vigilante', name: 'Vigilante Noturno', baseCost: 300, count: 0, dps: 10, icon: 'fa-user-secret', color: 'text-gray-800' },
+                speedster: { id: 'speedster', name: 'Velocista', baseCost: 1500, count: 0, dps: 40, icon: 'fa-bolt', color: 'text-yellow-500' },
+                amazon: { id: 'amazon', name: 'Guerreira Amazona', baseCost: 8000, count: 0, dps: 150, icon: 'fa-shield-alt', color: 'text-red-500' },
+                alien: { id: 'alien', name: 'Último Filho', baseCost: 50000, count: 0, dps: 500, icon: 'fa-rocket', color: 'text-blue-600' }
+            },
+            artifacts: {
+                amulet: { id: 'amulet', name: 'Amuleto da Sorte', desc: '+10% Ouro', owned: false, icon: 'fa-gem', color: 'text-green-400' },
+                ring: { id: 'ring', name: 'Anel do Poder', desc: '+20% Dano Clique', owned: false, icon: 'fa-ring', color: 'text-yellow-400' },
+                cape: { id: 'cape', name: 'Capa Sombria', desc: '+20% DPS', owned: false, icon: 'fa-mask', color: 'text-gray-800' }
+            },
+            skills: {
+                fury: { active: false, cooldown: 0, maxCooldown: 30, duration: 5, effect: 'dps_x2' },
+                crit: { active: false, cooldown: 0, maxCooldown: 45, duration: 10, effect: 'crit_chance' },
+                team: { active: false, cooldown: 0, maxCooldown: 60, duration: 10, effect: 'all_dmg_x2' }
+            }
+        };
+
+        const villains = [
+            { name: "Punguista", icon: "fa-mask", color: "text-gray-500" },
+            { name: "Capanga", icon: "fa-user-ninja", color: "text-blue-800" },
+            { name: "Palhaço Louco", icon: "fa-smile", color: "text-red-600" },
+            { name: "Mutante", icon: "fa-frog", color: "text-green-600" },
+            { name: "Ciborgue", icon: "fa-robot", color: "text-gray-400" },
+            { name: "Simbionte", icon: "fa-spider", color: "text-black" }
+        ];
+        const bosses = ["Rei do Crime", "Conquistador", "Titã Louco", "Devorador de Mundos"];
+
+        let engine = { lastTime: 0, isRunning: false };
+        let isBoss = false;
+        let bossTimeLeft = 0;
+        let activeCritBuff = false;
+        let comboTimer = null;
+
+        const els = {
+            score: document.getElementById('scoreDisplay'),
+            dps: document.getElementById('dpsDisplay'),
+            hpText: document.getElementById('hpText'),
+            hpBar: document.getElementById('hpBar'),
+            villainName: document.getElementById('villainName'),
+            villainIcon: document.getElementById('villainIcon'),
+            villainSprite: document.getElementById('villainSprite'),
+            clickZone: document.getElementById('clickZone'),
+            startOverlay: document.getElementById('startOverlay'),
+            settingsModal: document.getElementById('settingsModal')
+        };
+
+        // --- ENGINE & LOOP ---
+        function startGame() {
+            AudioSys.init();
+            loadGame();
+            els.startOverlay.classList.add('hidden');
+            engine.isRunning = true;
+            engine.lastTime = performance.now();
+            checkOfflineProgress();
+            
+            requestAnimationFrame(gameLoop);
+            setInterval(saveGame, 5000);
+            setInterval(() => { if(!isBoss && Math.random() > 0.7) spawnWeakPoint(); }, 4000);
+            setInterval(checkAchievements, 2000);
+            
+            ParticleSys.resize();
+            window.addEventListener('resize', () => ParticleSys.resize());
+            updateUI();
+            spawnVillain(false);
+            checkEnvironment();
+        }
+
+        function gameLoop(currentTime) {
+            if (!engine.isRunning) return;
+            const dt = (currentTime - engine.lastTime) / 1000;
+            engine.lastTime = currentTime;
+
+            // Particle Update
+            ParticleSys.update();
+
+            // Logic Update
+            if (dt < 1.0) { // Prevent huge jumps on lag
+                updateLogic(dt);
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateLogic(dt) {
+            // DPS
+            let currentDps = calculateDPS();
+            if (currentDps > 0) {
+                damageVillain(currentDps * dt, true);
+            }
+
+            // Cooldowns
+            for (let k in gameData.skills) {
+                let s = gameData.skills[k];
+                if (s.cooldown > 0) s.cooldown -= dt;
+                if (s.active) {
+                    s.duration -= dt;
+                    if (s.duration <= 0) {
+                        s.active = false;
+                        if (k === 'crit') activeCritBuff = false;
+                        updateSkillUI(k);
+                    }
+                }
+                updateSkillUI(k);
+            }
+
+            // Boss Timer
+            if (isBoss) {
+                bossTimeLeft -= dt;
+                document.getElementById('bossTimerText').innerText = Math.ceil(bossTimeLeft) + 's';
+                document.getElementById('bossTimerBar').style.width = (bossTimeLeft / 30 * 100) + '%';
+                if (bossTimeLeft <= 0) failBoss();
+            }
+        }
+
+        // --- COMBAT ---
+        function handleInput(x, y, forcedCrit = false) {
+            gameData.totalClicks++;
+            
+            // Combo
+            const now = Date.now();
+            if (comboTimer) clearTimeout(comboTimer);
+            gameData.combo++;
+            if (gameData.combo > 5) {
+                document.getElementById('comboContainer').classList.remove('hidden');
+                document.getElementById('comboText').innerText = `x${gameData.combo}`;
+                comboTimer = setTimeout(() => {
+                    gameData.combo = 0;
+                    document.getElementById('comboContainer').classList.add('hidden');
+                }, 1200);
+            }
+
+            // Damage Calc
+            let dmg = gameData.clickDamage;
+            
+            // Multipliers
+            let mult = 1 + (gameData.crystals * 0.1);
+            mult += getAchievementBonus();
+            if (gameData.artifacts.ring.owned) mult += 0.2;
+            if (gameData.skills.team.active) mult *= 2;
+            if (gameData.combo > 10) mult *= 1.5;
+
+            // Crit Calc
+            let isCrit = Math.random() < 0.05;
+            if (activeCritBuff) isCrit = Math.random() < 0.5;
+            if (forcedCrit) isCrit = true;
+
+            if (isCrit) {
+                mult *= 5; // Base Crit
+                if(forcedCrit) mult *= 2; // Weak point bonus
+                
+                AudioSys.playCrit();
+                ParticleSys.spawn(x, y, 'crit');
+                triggerScreenShake();
+                flashScreen();
+            } else {
+                AudioSys.playClick();
+                ParticleSys.spawn(x, y, 'text');
+            }
+
+            // Final Dmg
+            dmg *= mult;
+            damageVillain(dmg);
+            ParticleSys.spawn(x, y, 'hit');
+
+            // Animate Villain
+            els.villainSprite.classList.remove('villain-hit');
+            void els.villainSprite.offsetWidth;
+            els.villainSprite.classList.add('villain-hit');
+        }
+
+        function damageVillain(amt, isAuto = false) {
+            gameData.villainCurrentHp -= amt;
+            if (gameData.villainCurrentHp <= 0) {
+                defeatVillain();
+            }
+            updateHpVisual();
+        }
+
+        function defeatVillain() {
+            gameData.villainsDefeated++;
+            let reward = Math.floor(gameData.villainMaxHp / 2.5);
+            if (gameData.artifacts.amulet.owned) reward *= 1.1;
+            if (isBoss) reward *= 10;
+
+            gameData.score += reward;
+            gameData.totalScoreRun += reward;
+            
+            // Chance for artifact
+            if (Math.random() < 0.02) rollArtifact();
+
+            // Progression
+            if (isBoss) {
+                AudioSys.playLevelUp();
+                showNotification("CHEFE DERROTADO! +Nível", "bg-yellow-400");
+                gameData.level++;
+                isBoss = false;
+                checkEnvironment();
+                document.getElementById('bossTimerContainer').classList.add('hidden');
+            } else if (gameData.villainsDefeated % 10 === 0) {
+                isBoss = true;
+                startBossFight();
+                return; // spawn handled by startBoss
+            }
+
+            spawnVillain(true);
+            updateUI();
+        }
+
+        function startBossFight() {
+            document.getElementById('bossTimerContainer').classList.remove('hidden');
+            bossTimeLeft = 30;
+            
+            const bossIdx = Math.floor((gameData.level / 5) % bosses.length);
+            gameData.villainMaxHp *= 8;
+            gameData.villainCurrentHp = gameData.villainMaxHp;
+            
+            els.villainName.innerText = bosses[bossIdx];
+            els.villainIcon.className = "fas fa-dragon";
+            els.villainSprite.className = "text-[9rem] md:text-[11rem] transition-transform filter drop-shadow-2xl text-red-600 relative";
+            
+            showNotification("⚠️ ALERTA DE CHEFE ⚠️", "bg-red-600 text-white");
+            updateHpVisual();
+        }
+
+        function failBoss() {
+            isBoss = false;
+            document.getElementById('bossTimerContainer').classList.add('hidden');
+            showNotification("O Chefe fugiu!", "bg-gray-600 text-white");
+            spawnVillain(true);
+        }
+
+        function spawnVillain(anim) {
+            if (isBoss) return;
+            
+            // HP scaling curve
+            const baseHp = 20;
+            const growth = 1.4;
+            gameData.villainMaxHp = Math.floor(baseHp * Math.pow(growth, gameData.level - 1));
+            gameData.villainCurrentHp = gameData.villainMaxHp;
+
+            const v = villains[(gameData.level - 1) % villains.length];
+            els.villainName.innerText = `Nvl ${gameData.level} ${v.name}`;
+            els.villainIcon.className = `fas ${v.icon}`;
+            els.villainSprite.className = `text-[8rem] md:text-[10rem] transition-transform filter drop-shadow-2xl ${v.color} relative`;
+            
+            updateHpVisual();
+        }
+
+        // --- MECHANICS ---
+        function calculateDPS() {
+            let dps = gameData.autoDamage;
+            let mult = 1 + (gameData.crystals * 0.1);
+            mult += getAchievementBonus();
+            if (gameData.artifacts.cape.owned) mult += 0.2;
+            if (gameData.skills.fury.active) mult *= 2;
+            if (gameData.skills.team.active) mult *= 2;
+            return dps * mult;
+        }
+
+        function getAchievementBonus() {
+            let bonus = 0;
+            Object.values(gameData.achievements).forEach(a => {
+                if (a.done) bonus += a.reward;
+            });
+            return bonus;
+        }
+
+        function activateSkill(key) {
+            const s = gameData.skills[key];
+            if (s.cooldown > 0) return;
+            
+            s.active = true;
+            s.cooldown = s.maxCooldown;
+            s.duration = (key === 'fury' ? 5 : 10);
+            
+            if (key === 'crit') activeCritBuff = true;
+            
+            AudioSys.playBuy(); // Reuse sound
+            showNotification(`${key.toUpperCase()} ATIVADO!`, "bg-blue-500 text-white");
+            updateSkillUI(key);
+        }
+
+        function spawnWeakPoint() {
+            const existing = document.querySelector('.weak-point');
+            if (existing) existing.remove();
+
+            const rect = els.clickZone.getBoundingClientRect();
+            const point = document.createElement('div');
+            point.className = 'weak-point';
+            
+            // Random pos relative to clickzone
+            const rx = Math.random() * (rect.width - 60);
+            const ry = Math.random() * (rect.height - 60);
+            
+            point.style.left = rx + 'px';
+            point.style.top = ry + 'px';
+            
+            point.onpointerdown = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleInput(e.clientX, e.clientY, true);
+                point.remove();
+            };
+
+            els.clickZone.appendChild(point);
+            setTimeout(() => { if(point.parentNode) point.remove(); }, 2500);
+        }
+
+        function rollArtifact() {
+            const available = Object.keys(gameData.artifacts).filter(k => !gameData.artifacts[k].owned);
+            if (available.length === 0) return;
+            const key = available[Math.floor(Math.random() * available.length)];
+            gameData.artifacts[key].owned = true;
+            showNotification(`Item Raro: ${gameData.artifacts[key].name}!`, "bg-purple-500 text-yellow-200");
+            renderShop();
+        }
+
+        // --- OFFLINE PROGRESS ---
+        function checkOfflineProgress() {
+            const now = Date.now();
+            const diffMs = now - gameData.lastSaveTime;
+            if (diffMs > 60000) { // > 1 min
+                const seconds = diffMs / 1000;
+                const dps = calculateDPS();
+                if (dps > 0) {
+                    const earned = Math.floor(dps * seconds * 0.5); // 50% efficiency offline
+                    if (earned > 0) {
+                        gameData.score += earned;
+                        document.getElementById('offlineTime').innerText = new Date(diffMs).toISOString().substr(11, 8);
+                        document.getElementById('offlineGold').innerText = formatNumber(earned);
+                        document.getElementById('offlineModal').classList.remove('hidden');
+                    }
+                }
+            }
+            gameData.lastSaveTime = now;
+        }
+        function closeOfflineModal() {
+            document.getElementById('offlineModal').classList.add('hidden');
+        }
+
+        // --- UI & HELPERS ---
+        function updateUI() {
+            els.score.innerText = formatNumber(Math.floor(gameData.score));
+            els.dps.innerText = formatNumber(Math.floor(calculateDPS()));
+            document.getElementById('levelDisplay').innerText = gameData.level;
+            document.getElementById('clickPowerDisplay').innerText = formatNumber(Math.floor(gameData.clickDamage * (1 + gameData.crystals * 0.1)));
+            
+            const pGain = Math.floor(gameData.totalScoreRun / 1000000);
+            document.getElementById('prestigeGain').innerText = pGain;
+            document.getElementById('btnPrestige').disabled = pGain <= 0;
+
+            if (gameData.crystals > 0) {
+                const pc = document.getElementById('prestigeCount');
+                pc.classList.remove('hidden');
+                pc.innerHTML = `<i class="fas fa-gem"></i> ${gameData.crystals}`;
+            }
+        }
+
+        function updateHpVisual() {
+            const pct = Math.max(0, (gameData.villainCurrentHp / gameData.villainMaxHp) * 100);
+            els.hpBar.style.width = `${pct}%`;
+            els.hpText.innerText = `${formatNumber(Math.ceil(gameData.villainCurrentHp))} / ${formatNumber(gameData.villainMaxHp)}`;
+        }
+
+        function updateSkillUI(key) {
+            const s = gameData.skills[key];
+            const btn = document.getElementById(`skill${key === 'fury'?1:key==='crit'?2:3}`);
+            const bar = document.getElementById(`cd-${key}`);
+            
+            if (s.active) {
+                btn.classList.add('border-yellow-400', 'pulse-glow');
+                bar.style.height = '0';
+            } else if (s.cooldown > 0) {
+                btn.classList.remove('border-yellow-400', 'pulse-glow');
+                btn.disabled = true;
+                const pct = (s.cooldown / s.maxCooldown) * 100;
+                bar.style.height = `${pct}%`;
+            } else {
+                btn.classList.remove('border-yellow-400', 'pulse-glow');
+                btn.disabled = false;
+                bar.style.height = '0';
+            }
+        }
+
+        function renderShop() {
+            // Upgrades
+            let uHtml = '';
+            Object.keys(gameData.upgrades).forEach(k => {
+                const u = gameData.upgrades[k];
+                let cost = Math.floor(u.baseCost * Math.pow(1.2, u.count));
+                uHtml += createShopItem(u.name, `+${u.boost} Clique`, cost, u.count, u.icon, `buy('upgrade','${k}')`, gameData.score >= cost);
+            });
+            document.getElementById('panelUpgrades').innerHTML = uHtml;
+
+            // Heroes
+            let hHtml = '';
+            Object.keys(gameData.heroes).forEach(k => {
+                const h = gameData.heroes[k];
+                let cost = Math.floor(h.baseCost * Math.pow(1.2, h.count));
+                hHtml += createShopItem(h.name, `+${h.dps} DPS`, cost, h.count, h.icon, `buy('hero','${k}')`, gameData.score >= cost, h.color);
+            });
+            document.getElementById('panelHeroes').innerHTML = hHtml;
+
+            // Artifacts
+            let aHtml = '';
+            Object.keys(gameData.artifacts).forEach(k => {
+                const a = gameData.artifacts[k];
+                aHtml += `
+                <div class="comic-box p-2 flex flex-col items-center text-center ${a.owned ? 'bg-yellow-100 border-yellow-500' : 'bg-gray-200 opacity-60'}">
+                    <i class="fas ${a.icon} ${a.color} text-2xl mb-1"></i>
+                    <div class="font-bold text-xs leading-tight">${a.name}</div>
+                    <div class="text-[10px] mt-1 font-bold text-gray-600">${a.owned ? a.desc : '???'}</div>
+                </div>`;
+            });
+            document.getElementById('panelArtifacts').innerHTML = aHtml;
+        }
+
+        function createShopItem(name, effect, cost, level, icon, action, canBuy, colorClass = 'text-gray-800') {
+            return `
+            <div class="comic-box p-2 flex items-center gap-2 mb-1 ${canBuy?'bg-white':'bg-gray-100'}">
+                <div class="w-10 h-10 flex items-center justify-center text-xl border-2 border-black bg-gray-50 shrink-0">
+                    <i class="fas ${icon} ${colorClass}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="font-bold text-sm truncate leading-none mb-1">${name}</div>
+                    <div class="text-xs text-blue-600 font-bold">${effect} <span class="text-gray-400 ml-1">Nvl ${level}</span></div>
+                </div>
+                <button onclick="${action}" class="comic-btn px-2 py-2 w-20 flex flex-col items-center justify-center ${canBuy?'bg-yellow-400 hover:bg-yellow-300':'bg-gray-300'}" ${!canBuy?'disabled':''}>
+                    <span class="text-xs font-bold leading-none">${formatNumber(cost)}</span>
+                </button>
+            </div>`;
+        }
+
+        function buy(type, key) {
+            const item = type === 'hero' ? gameData.heroes[key] : gameData.upgrades[key];
+            let cost = Math.floor(item.baseCost * Math.pow(1.2, item.count));
+            
+            if (gameData.score >= cost) {
+                AudioSys.playBuy();
+                gameData.score -= cost;
+                item.count++;
+                if (type === 'hero') gameData.autoDamage += item.dps;
+                else gameData.clickDamage += item.boost;
+                
+                updateUI();
+                renderShop();
+            }
+        }
+
+        function checkAchievements() {
+            let changed = false;
+            const list = document.getElementById('miniAchievementList');
+            list.innerHTML = '';
+            
+            for(let k in gameData.achievements) {
+                const a = gameData.achievements[k];
+                // Check
+                if(!a.done) {
+                    if(a.type === 'kills' && gameData.villainsDefeated >= a.req) a.done = true;
+                    if(a.type === 'clicks' && gameData.totalClicks >= a.req) a.done = true;
+                    if(a.type === 'level' && gameData.level >= a.req) a.done = true;
+                    
+                    if(a.done) {
+                        changed = true;
+                        showNotification(`Conquista: ${a.name}!`, "bg-blue-600 text-white");
+                    }
+                }
+                // Render List
+                if(a.done) {
+                    list.innerHTML += `<div class="text-xs font-bold text-green-600">✔ ${a.name} (+${a.reward*10}%)</div>`;
+                }
+            }
+            if(changed) updateUI();
+        }
+
+        // --- SYSTEM FUNCTIONS ---
+        function formatNumber(num) {
+            if (num >= 1e6) return (num / 1e6).toFixed(2) + 'M';
+            if (num >= 1e3) return (num / 1e3).toFixed(1) + 'k';
+            return Math.floor(num);
+        }
+
+        function showNotification(text, classes) {
+            const n = document.createElement('div');
+            n.className = `comic-box px-4 py-2 font-comic text-lg shadow-xl ${classes} transform transition-all duration-500`;
+            n.innerText = text;
+            document.getElementById('notificationArea').appendChild(n);
+            // Animate in
+            requestAnimationFrame(() => { n.style.transform = "translateX(-10px)"; });
+            setTimeout(() => { n.style.opacity = '0'; setTimeout(() => n.remove(), 500); }, 2000);
+        }
+
+        function triggerScreenShake() {
+            document.body.classList.remove('shake-screen');
+            void document.body.offsetWidth;
+            document.body.classList.add('shake-screen');
+        }
+        
+        function flashScreen() {
+            const f = document.getElementById('critFlash');
+            f.classList.add('active');
+            setTimeout(() => f.classList.remove('active'), 100);
+        }
+
+        function switchTab(tab) {
+            ['upgrades','heroes','artifacts'].forEach(t => {
+                document.getElementById('panel'+t.charAt(0).toUpperCase()+t.slice(1)).classList.add('hidden');
+                const btn = document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1));
+                btn.classList.remove('bg-yellow-300', 'top-[2px]');
+                btn.classList.add('bg-gray-200');
+            });
+            document.getElementById('panel'+tab.charAt(0).toUpperCase()+tab.slice(1)).classList.remove('hidden');
+            const actBtn = document.getElementById('tab'+tab.charAt(0).toUpperCase()+tab.slice(1));
+            actBtn.classList.remove('bg-gray-200');
+            actBtn.classList.add('bg-yellow-300', 'top-[2px]');
+            renderShop();
+        }
+
+        function checkEnvironment() {
+            const zone = Math.floor((gameData.level - 1) / 5);
+            const el = document.getElementById('gameZone');
+            el.classList.remove('bg-city', 'bg-sewer', 'bg-space');
+            
+            if (zone % 3 === 0) el.classList.add('bg-city');
+            else if (zone % 3 === 1) el.classList.add('bg-sewer');
+            else el.classList.add('bg-space');
+        }
+
+        // --- SAVE/LOAD ---
+        function saveGame() {
+            gameData.lastSaveTime = Date.now();
+            localStorage.setItem('heroClickerUlt', JSON.stringify(gameData));
+            showNotification("Jogo Salvo", "bg-gray-800 text-white text-xs");
+        }
+
+        function manualSave() {
+            saveGame();
+            toggleMenu();
+        }
+
+        function loadGame() {
+            const s = localStorage.getItem('heroClickerUlt');
+            if (s) {
+                const d = JSON.parse(s);
+                // Merge logic to keep object structure safe
+                for(let k in d) {
+                    if (typeof d[k] === 'object' && d[k] !== null && !Array.isArray(d[k])) {
+                        for(let sk in d[k]) {
+                            if(gameData[k] && gameData[k][sk]) {
+                                if(k==='upgrades' || k==='heroes') gameData[k][sk].count = d[k][sk].count;
+                                else if(k==='artifacts' || k==='achievements') gameData[k][sk].done = d[k][sk].done; gameData[k][sk].owned = d[k][sk].owned;
+                            }
+                        }
+                    } else {
+                        gameData[k] = d[k];
+                    }
+                }
+            }
+            document.getElementById('startTimeDisplay').innerText = new Date(gameData.startTime).toLocaleDateString();
+        }
+
+        function doPrestige() {
+            const pGain = Math.floor(gameData.totalScoreRun / 1000000);
+            if(pGain <= 0) return;
+            
+            localStorage.removeItem('heroClickerUlt'); // Wipe current save
+            
+            // Create new save with crystals
+            const newData = { ...gameData }; 
+            newData.score = 0; newData.level = 1; newData.clickDamage = 1; newData.autoDamage = 0;
+            newData.villainsDefeated = 0; newData.totalScoreRun = 0;
+            newData.crystals += pGain;
+            
+            // Reset objects
+            Object.keys(newData.upgrades).forEach(k => newData.upgrades[k].count = 0);
+            Object.keys(newData.heroes).forEach(k => newData.heroes[k].count = 0);
+            
+            localStorage.setItem('heroClickerUlt', JSON.stringify(newData));
+            location.reload();
+        }
+
+        function toggleMenu() { document.getElementById('settingsModal').classList.toggle('hidden'); updateUI(); }
+        function toggleMute() { AudioSys.muted = !AudioSys.muted; document.getElementById('muteBtn').innerText = AudioSys.muted ? "DESLIGADO" : "LIGADO"; }
+        function toggleParticles() { ParticleSys.enabled = !ParticleSys.enabled; document.getElementById('partBtn').innerText = ParticleSys.enabled ? "LIGADO" : "DESLIGADO"; }
+
+        // Init Event for Touch (Pointerdown handles all)
+        els.startOverlay.addEventListener('click', startGame);
+        els.clickZone.addEventListener('pointerdown', (e) => {
+            if(e.target.classList.contains('weak-point')) return; // Handled by weak point
+            e.preventDefault();
+            handleInput(e.clientX, e.clientY);
+        });
+
+    </script>
+</body>
+</html>
