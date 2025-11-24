@@ -18,6 +18,7 @@ let isBoss = false;
 let bossTimeLeft = 0;
 let activeCritBuff = false;
 let currentVillain = null;
+let specialVillainActive = false;
 
 let lastRenderTime = 0;
 let lastSaveTime = 0;
@@ -36,6 +37,47 @@ const weakPointPool = [];
 window.getParticleFromPool = getParticleFromPool;
 window.returnParticleToPool = returnParticleToPool;
 window.ErrorHandler = ErrorHandler;
+
+// 🦸‍♂️ NOVO: Função para reivindicar todas as missões
+window.claimAllMissionRewards = function () {
+  const missions = MissionSys.currentMissions;
+  let totalCrystals = 5; // Bônus por completar todas
+
+  missions.forEach((mission) => {
+    if (MissionSys.claimReward(mission.id)) {
+      totalCrystals += mission.reward.crystals;
+    }
+  });
+
+  // Aplica bônus por completar todas
+  gameData.crystals += 5;
+  gameData.dailyMissions.rewardsClaimed = true;
+
+  ErrorHandler.showSuccess(
+    `🎉 Todas as missões reivindicadas! +${totalCrystals} cristais!`
+  );
+  Renderer.updateMissions();
+  Shop.render();
+};
+
+// 🦸‍♂️ NOVO: Efeito de partículas temáticas Superman
+function spawnSupermanParticle(x, y, text, type = "normal") {
+  const colors = {
+    normal: "text-yellow-400",
+    crit: "text-red-500",
+    heal: "text-blue-400",
+    gold: "text-yellow-300",
+    special: "text-purple-400",
+  };
+
+  ParticleSys.spawnFloatingText(
+    x,
+    y,
+    text,
+    colors[type] || colors.normal,
+    type === "crit" ? 1.8 : 1.2
+  );
+}
 
 function init() {
   ErrorHandler.init();
@@ -140,16 +182,21 @@ function update(dt) {
 
   if (dps > 0) damageVillain(dps * dt);
 
+  // 🦸‍♂️ MELHORADO: Sistema de vilões especiais
   if (
     now - lastSpecialVillainCheck > SPECIAL_VILLAIN_CHECK &&
     !isBoss &&
-    !currentVillain?.special
+    !specialVillainActive &&
+    Math.random() < 0.15
   ) {
     checkSpecialVillain();
     lastSpecialVillainCheck = now;
   }
 
-  if (currentVillain?.special) applySpecialVillainEffects(dt);
+  // 🦸‍♂️ MELHORADO: Efeitos de vilões especiais
+  if (specialVillainActive && currentVillain) {
+    applySpecialVillainEffects(dt);
+  }
 
   for (let k in gameData.skills) {
     const s = gameData.skills[k];
@@ -189,29 +236,51 @@ function update(dt) {
 }
 
 function checkSpecialVillain() {
-  if (Math.random() < 0.15) {
-    const sv =
-      specialVillains[Math.floor(Math.random() * specialVillains.length)];
-    spawnSpecialVillain(sv);
-  }
+  if (specialVillains.length === 0) return;
+
+  const sv =
+    specialVillains[Math.floor(Math.random() * specialVillains.length)];
+  spawnSpecialVillain(sv);
 }
 
 function spawnSpecialVillain(sv) {
-  currentVillain = { ...sv, special: true, baseHP: gameData.villainMaxHp };
-  if (sv.type === "tank")
+  currentVillain = {
+    ...sv,
+    special: true,
+    baseHP: gameData.villainMaxHp,
+    originalHP: gameData.villainMaxHp,
+  };
+
+  if (sv.type === "tank") {
     gameData.villainMaxHp = Math.floor(gameData.villainMaxHp * 1.5);
+  }
+
   gameData.villainCurrentHp = gameData.villainMaxHp;
+  specialVillainActive = true;
+
   Renderer.updateVillainSprite(sv, false);
   Renderer.showSpecialVillainIndicator(sv);
-  ErrorHandler.showSuccess(`⭐ ${sv.name} apareceu!`);
+
+  // 🦸‍♂️ NOVO: Partícula especial para vilão especial
+  spawnSupermanParticle(
+    window.innerWidth / 2,
+    window.innerHeight / 2 - 100,
+    `⭐ ${sv.name} ⭐`,
+    "special"
+  );
+
+  ErrorHandler.showSuccess(`⭐ ${sv.name} apareceu! ${sv.effect}`);
 }
 
 function applySpecialVillainEffects(dt) {
-  if (!currentVillain) return;
+  if (!currentVillain || !specialVillainActive) return;
+
   if (currentVillain.type === "healer") {
-    gameData.villainCurrentHp += gameData.villainMaxHp * 0.01 * (dt / 2);
-    if (gameData.villainCurrentHp > gameData.villainMaxHp)
-      gameData.villainCurrentHp = gameData.villainMaxHp;
+    const healAmount = gameData.villainMaxHp * 0.01 * (dt / 2);
+    gameData.villainCurrentHp = Math.min(
+      gameData.villainCurrentHp + healAmount,
+      gameData.villainMaxHp
+    );
   }
 }
 
@@ -262,31 +331,70 @@ async function handleInput(x, y, forcedCrit = false) {
     bonusMult,
     damageVillain
   );
+
   if (res && res.showCombo) Renderer.updateCombo(gameData.combo);
   Renderer.animateHit();
   MissionSys.updateProgress("click");
 }
 
+// 🦸‍♂️ SUBSTITUÍDO: Nova função damageVillain com partículas temáticas
 function damageVillain(amt) {
-  if (currentVillain?.type === "elusive" && Math.random() < 0.3) {
-    ParticleSys.spawnFloatingText(
-      window.innerWidth / 2,
-      window.innerHeight / 2,
-      "ESQUIVOU!",
-      "text-purple-400",
-      1.5
+  try {
+    if (currentVillain?.type === "elusive" && Math.random() < 0.3) {
+      spawnSupermanParticle(
+        window.innerWidth / 2,
+        window.innerHeight / 2,
+        "ESQUIVOU!",
+        "heal"
+      );
+      return;
+    }
+
+    gameData.villainCurrentHp -= amt;
+
+    // Partícula de dano temática
+    const damageText = `-${Math.floor(amt)}`;
+    spawnSupermanParticle(
+      window.innerWidth / 2 + (Math.random() * 100 - 50),
+      window.innerHeight / 2 + (Math.random() * 100 - 50),
+      damageText,
+      amt > 50 ? "crit" : "normal"
     );
-    return;
+
+    if (gameData.villainCurrentHp <= 0) defeatVillain();
+  } catch (error) {
+    console.warn("Erro no damageVillain:", error);
   }
-  gameData.villainCurrentHp -= amt;
-  if (gameData.villainCurrentHp <= 0) defeatVillain();
 }
 
 function defeatVillain() {
   gameData.villainsDefeated++;
   let reward = Math.floor(gameData.villainMaxHp / 2.5);
   if (gameData.artifacts.amulet.owned) reward *= 1.1;
-  if (currentVillain?.special) reward *= 2;
+
+  // 🦸‍♂️ MELHORADO: Bônus para vilões especiais
+  if (specialVillainActive && currentVillain) {
+    reward *= 2;
+
+    // 🦸‍♂️ NOVO: Partícula de recompensa dobrada
+    spawnSupermanParticle(
+      window.innerWidth / 2,
+      window.innerHeight / 2 - 50,
+      "RECOMPENSA DOBRADA!",
+      "gold"
+    );
+
+    ErrorHandler.showSuccess(
+      `⭐ Vilão especial derrotado! Recompensa dobrada!`
+    );
+
+    // Restaurar HP normal após derrotar vilão especial
+    if (currentVillain.originalHP) {
+      gameData.villainMaxHp = currentVillain.originalHP;
+    }
+    specialVillainActive = false;
+  }
+
   if (isBoss) {
     reward *= 10;
     MissionSys.updateProgress("boss_kill");
@@ -296,14 +404,32 @@ function defeatVillain() {
   gameData.totalScoreRun += reward;
   MissionSys.updateProgress("kill");
 
+  // 🦸‍♂️ NOVO: Partícula de ouro ganho
+  if (reward > 0) {
+    spawnSupermanParticle(
+      window.innerWidth / 2,
+      window.innerHeight / 2 + 50,
+      `+${reward} OURO`,
+      "gold"
+    );
+  }
+
   if (Math.random() < 0.02) {
     const avail = Object.keys(gameData.artifacts).filter(
       (k) => !gameData.artifacts[k].owned
     );
     if (avail.length > 0) {
-      gameData.artifacts[
-        avail[Math.floor(Math.random() * avail.length)]
-      ].owned = true;
+      const artifactKey = avail[Math.floor(Math.random() * avail.length)];
+      gameData.artifacts[artifactKey].owned = true;
+
+      // 🦸‍♂️ NOVO: Partícula de artefato desbloqueado
+      spawnSupermanParticle(
+        window.innerWidth / 2,
+        window.innerHeight / 2,
+        "ARTEFATO DESBLOQUEADO!",
+        "special"
+      );
+
       Shop.render();
     }
   }
@@ -314,12 +440,21 @@ function defeatVillain() {
     isBoss = false;
     Renderer.toggleBossUI(false);
     Renderer.updateEnvironment(gameData.level);
+
+    // 🦸‍♂️ NOVO: Partícula de level up
+    spawnSupermanParticle(
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+      "LEVEL UP!",
+      "crit"
+    );
   } else if (gameData.villainsDefeated % 10 === 0) {
     startBossFight();
     return;
   }
 
   currentVillain = null;
+  specialVillainActive = false;
   spawnVillain();
   Shop.render();
 }
@@ -332,6 +467,14 @@ function startBossFight() {
   gameData.villainMaxHp *= 8;
   gameData.villainCurrentHp = gameData.villainMaxHp;
   Renderer.updateVillainSprite(bosses[bossIdx], true);
+
+  // 🦸‍♂️ NOVO: Partícula de boss aparecendo
+  spawnSupermanParticle(
+    window.innerWidth / 2,
+    window.innerHeight / 2,
+    "⚡ CHEFE ⚡",
+    "crit"
+  );
 }
 
 function failBoss() {
@@ -342,8 +485,11 @@ function failBoss() {
 
 function spawnVillain() {
   if (isBoss) return;
-  if (currentVillain?.special && currentVillain.baseHP)
-    gameData.villainMaxHp = currentVillain.baseHP;
+
+  // 🦸‍♂️ CORRIGIDO: Restaurar HP normal se era vilão especial
+  if (specialVillainActive && currentVillain?.originalHP) {
+    gameData.villainMaxHp = currentVillain.originalHP;
+  }
 
   const growth = 1.4;
   gameData.villainMaxHp = Math.floor(20 * Math.pow(growth, gameData.level - 1));
@@ -398,7 +544,16 @@ function checkAchievements() {
         a.done = true;
         changed = true;
       }
-      if (changed) ErrorHandler.showSuccess(`Conquista: ${a.name}!`);
+      if (changed) {
+        // 🦸‍♂️ NOVO: Partícula de conquista
+        spawnSupermanParticle(
+          window.innerWidth / 2,
+          window.innerHeight / 2,
+          `CONQUISTA: ${a.name}!`,
+          "gold"
+        );
+        ErrorHandler.showSuccess(`Conquista: ${a.name}!`);
+      }
     }
   }
   if (changed) Shop.render();
@@ -413,6 +568,15 @@ function buy(type, key) {
     item.count++;
     if (type === "hero") gameData.autoDamage += item.dps;
     else gameData.clickDamage += item.boost;
+
+    // 🦸‍♂️ NOVO: Partícula de compra
+    spawnSupermanParticle(
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+      "COMPRA REALIZADA!",
+      "normal"
+    );
+
     Shop.render();
   }
 }
@@ -426,6 +590,19 @@ function activateSkill(key) {
   if (key === "crit") activeCritBuff = true;
   AudioSys.playBuy();
   MissionSys.updateProgress("skill_use");
+
+  // 🦸‍♂️ NOVO: Partícula de habilidade ativada
+  const skillNames = {
+    fury: "FÚRIA",
+    crit: "MIRA CRÍTICA",
+    team: "LIGA DA JUSTIÇA",
+  };
+  spawnSupermanParticle(
+    window.innerWidth / 2,
+    window.innerHeight / 2,
+    `${skillNames[key]} ATIVADA!`,
+    "special"
+  );
 }
 
 function doPrestige() {
@@ -442,12 +619,35 @@ function doPrestige() {
   newData.crystals += pGain;
   Object.keys(newData.upgrades).forEach((k) => (newData.upgrades[k].count = 0));
   Object.keys(newData.heroes).forEach((k) => (newData.heroes[k].count = 0));
+
+  // 🦸‍♂️ MELHORADO: Preservar missões diárias no prestige
+  newData.dailyMissions = gameData.dailyMissions;
+
   localStorage.setItem(SaveSys.STORAGE_KEY, JSON.stringify(newData));
-  location.reload();
+
+  // 🦸‍♂️ NOVO: Partícula de prestígio
+  spawnSupermanParticle(
+    window.innerWidth / 2,
+    window.innerHeight / 2,
+    `PRESTÍGIO! +${pGain} CRISTAIS`,
+    "gold"
+  );
+
+  setTimeout(() => {
+    location.reload();
+  }, 1000);
 }
 
 function claimMissionReward(id) {
   if (MissionSys.claimReward(id)) {
+    // 🦸‍♂️ NOVO: Partícula de missão completada
+    spawnSupermanParticle(
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+      "MISSÃO COMPLETADA!",
+      "gold"
+    );
+
     Shop.render();
     Renderer.updateMissions();
   }
@@ -474,7 +674,7 @@ function setupEvents() {
             "panel" + x.charAt(0).toUpperCase() + x.slice(1)
           );
           const btn = document.getElementById(
-            "tab" + x.charAt(0).toUpperCase() + x.slice(1)
+            "tab" + x.charAt(0).toUpperCase() + t.slice(1)
           );
           if (panel) panel.classList.add("hidden");
           if (btn) btn.classList.replace("bg-yellow-300", "bg-gray-200");
