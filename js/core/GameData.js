@@ -12,6 +12,15 @@ export const gameData = {
   villainMaxHp: 20,
   villainCurrentHp: 20,
   combo: 0,
+
+  // NOVO: Sistema de Missões
+  dailyMissions: {
+    lastReset: Date.now(),
+    completedToday: 0,
+    currentMissions: [],
+    rewardsClaimed: false,
+  },
+
   achievements: {
     kill10: {
       id: "kill10",
@@ -50,6 +59,7 @@ export const gameData = {
       done: false,
     },
   },
+
   upgrades: {
     gym: {
       id: "gym",
@@ -97,6 +107,7 @@ export const gameData = {
       type: "click",
     },
   },
+
   heroes: {
     kid: {
       id: "kid",
@@ -144,6 +155,7 @@ export const gameData = {
       color: "text-blue-600",
     },
   },
+
   artifacts: {
     amulet: {
       id: "amulet",
@@ -170,6 +182,7 @@ export const gameData = {
       color: "text-gray-800",
     },
   },
+
   skills: {
     fury: {
       active: false,
@@ -195,6 +208,7 @@ export const gameData = {
   },
 };
 
+// VILÕES NORMAIS (existentes)
 export const villains = [
   { name: "Punguista", icon: "fa-mask", color: "text-gray-500" },
   { name: "Capanga", icon: "fa-user-ninja", color: "text-blue-800" },
@@ -204,9 +218,96 @@ export const villains = [
   { name: "Simbionte", icon: "fa-spider", color: "text-black" },
 ];
 
+// NOVOS VILÕES ESPECIAIS
+export const specialVillains = [
+  {
+    name: "Ladrão Veloz",
+    icon: "fa-running",
+    color: "text-purple-600",
+    type: "elusive",
+    spawnChance: 0.1, // 10% de chance de aparecer
+    effect: "Tem 30% de chance de escapar do dano",
+  },
+  {
+    name: "Necromante",
+    icon: "fa-skull",
+    color: "text-green-800",
+    type: "healer",
+    spawnChance: 0.08, // 8% de chance
+    effect: "Regenera 1% de vida a cada 2 segundos",
+  },
+  {
+    name: "Golem de Pedra",
+    icon: "fa-mountain",
+    color: "text-gray-600",
+    type: "tank",
+    spawnChance: 0.05, // 5% de chance
+    effect: "Tem 50% mais vida que vilões normais",
+  },
+];
+
+// BOSSES (existentes)
 export const bosses = [
   "Rei do Crime",
   "Conquistador",
   "Titã Louco",
   "Devorador de Mundos",
+];
+
+// NOVO: Sistema de Missões
+export const dailyMissions = [
+  {
+    id: "kill_20",
+    name: "Caçador de Recompensas",
+    description: "Derrote 20 vilões",
+    type: "kill",
+    target: 20,
+    reward: { crystals: 2, gold: 500 },
+    icon: "fa-skull",
+  },
+  {
+    id: "use_skills_10",
+    name: "Mestre das Habilidades",
+    description: "Use habilidades 10 vezes",
+    type: "skill_use",
+    target: 10,
+    reward: { crystals: 3, gold: 300 },
+    icon: "fa-fire",
+  },
+  {
+    id: "reach_level_5",
+    name: "Ascensão Heróica",
+    description: "Alcance o nível 5",
+    type: "level_up",
+    target: 5,
+    reward: { crystals: 5, gold: 1000 },
+    icon: "fa-arrow-up",
+  },
+  {
+    id: "click_100",
+    name: "Dedos Ligeiros",
+    description: "Faça 100 cliques",
+    type: "click",
+    target: 100,
+    reward: { crystals: 1, gold: 200 },
+    icon: "fa-hand-pointer",
+  },
+  {
+    id: "defeat_boss",
+    name: "Desafiador de Chefes",
+    description: "Derrote 1 chefe",
+    type: "boss_kill",
+    target: 1,
+    reward: { crystals: 10, gold: 2000 },
+    icon: "fa-crown",
+  },
+  {
+    id: "combo_15",
+    name: "Combo Master",
+    description: "Alcance um combo de 15",
+    type: "combo",
+    target: 15,
+    reward: { crystals: 4, gold: 800 },
+    icon: "fa-bolt",
+  },
 ];

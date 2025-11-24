@@ -69,3 +69,92 @@ body {
   pointer-events: none;
   z-index: 40;
 }
+
+/* Error Handler Styles */
+#errorToast,
+#successToast {
+  border: 3px solid #000;
+  box-shadow: 4px 4px 0px #000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#errorToast:hover,
+#successToast:hover {
+  transform: translateY(-2px);
+  box-shadow: 6px 6px 0px #000;
+}
+
+/* Animation for toast */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+#errorToast,
+#successToast {
+  animation: slideInRight 0.3s ease-out;
+}
+
+/* Estilos para o Sistema de Missões */
+#missionsContainer {
+  max-height: 300px;
+}
+
+.mission-completed {
+  background: linear-gradient(45deg, #10b981, #34d399) !important;
+  border-color: #059669 !important;
+}
+
+.mission-progress-bar {
+  transition: width 0.5s ease-in-out;
+}
+
+/* Animação para novas missões */
+@keyframes missionPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.mission-new {
+  animation: missionPulse 2s infinite;
+}
+
+/* Indicador de vilão especial */
+#specialVillainIndicator {
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-5px);
+  }
+}
+
+/* Otimizações de performance */
+.villain-hit,
+.shake-screen,
+.weak-point {
+  will-change: transform, opacity;
+}
+
+.hidden {
+  display: none !important;
+}

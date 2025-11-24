@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Herói Clicker: Modular</title>
+    <title>Herói Clicker: Missões Diárias</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link
@@ -106,7 +106,19 @@
         </button>
       </div>
 
+      <!-- SEÇÃO DE MISSÕES DIÁRIAS - NOVA -->
       <div class="hidden md:flex flex-1 flex-col mt-4 gap-2 overflow-hidden">
+        <div
+          class="comic-box p-2 bg-purple-50 flex-1 overflow-y-auto custom-scroll"
+        >
+          <div id="missionsContainer">
+            <div class="text-center text-gray-500 py-4">
+              <i class="fas fa-tasks text-2xl mb-2"></i>
+              <p class="text-sm">Carregando missões...</p>
+            </div>
+          </div>
+        </div>
+
         <div
           class="comic-box p-2 bg-blue-50 flex-1 overflow-y-auto custom-scroll"
         >
