@@ -1,0 +1,71 @@
+@import url("https://fonts.googleapis.com/css2?family=Bangers&family=Roboto:wght@400;700;900&display=swap");
+
+:root {
+  --comic-black: #0f0f0f;
+  --comic-yellow: #facc15;
+  --comic-red: #ef4444;
+  --comic-blue: #3b82f6;
+  --comic-purple: #9333ea;
+}
+
+* {
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Roboto", sans-serif;
+  background-color: #1a1a1a;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.font-comic {
+  font-family: "Bangers", cursive;
+  letter-spacing: 1.5px;
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background: var(--comic-yellow);
+  border-radius: 3px;
+}
+
+.bg-pattern {
+  background-image: radial-gradient(#ffffff 15%, transparent 16%),
+    radial-gradient(#ffffff 15%, transparent 16%);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
+.bg-city {
+  background: linear-gradient(to bottom, #1e3a8a, #60a5fa);
+}
+.bg-sewer {
+  background: linear-gradient(to bottom, #064e3b, #34d399);
+}
+.bg-space {
+  background: linear-gradient(to bottom, #111827, #4c1d95);
+}
+
+#canvasOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 40;
+}

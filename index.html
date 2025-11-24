@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Herói Clicker: Multiverso</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bangers&family=Roboto:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="./css/main.css" />
+    <link rel="stylesheet" href="./css/animations.css" />
+    <link rel="stylesheet" href="./css/ui.css" />
+  </head>
+  <body
+    class="h-[100dvh] w-full flex flex-col md:flex-row text-gray-800 overflow-hidden"
+    id="mainBody"
+  >
+    <div
+      id="startOverlay"
+      class="fixed inset-0 bg-black/90 z-[100] flex flex-col items-center justify-center text-white cursor-pointer"
+    >
+      <h1 class="font-comic text-6xl text-yellow-400 mb-4 animate-bounce">
+        HERÓI CLICKER
+      </h1>
+      <p class="text-xl mb-8 font-bold">Toque para Começar</p>
+      <i class="fas fa-play-circle text-6xl text-red-500"></i>
+    </div>
+
+    <div id="critFlash" class="crit-flash"></div>
+
+    <div
+      id="offlineModal"
+      class="fixed inset-0 bg-black/90 z-[90] hidden flex items-center justify-center px-4"
+    >
+      <div class="comic-box p-6 max-w-md w-full bg-white text-center">
+        <h2 class="font-comic text-3xl text-blue-600 mb-2">RELATÓRIO</h2>
+        <div class="bg-gray-100 p-4 rounded border-2 border-black mb-4">
+          <p class="text-sm text-gray-500 uppercase font-bold">Tempo Offline</p>
+          <p id="offlineTime" class="font-comic text-xl">00:00:00</p>
+          <div class="h-px bg-gray-300 my-2"></div>
+          <p class="text-sm text-gray-500 uppercase font-bold">Ouro Coletado</p>
+          <p id="offlineGold" class="font-comic text-3xl text-yellow-500">0</p>
+        </div>
+        <button
+          id="btnClaimOffline"
+          class="comic-btn bg-green-500 text-white w-full py-3 text-xl"
+        >
+          RECEBER
+        </button>
+      </div>
+    </div>
+
+    <div
+      class="md:w-1/4 w-full bg-white border-b-4 md:border-b-0 md:border-r-4 border-black flex flex-row md:flex-col p-2 z-30 shadow-xl relative"
+    >
+      <div
+        class="hidden md:block text-center mb-4 p-4 bg-yellow-300 border-4 border-black transform -rotate-1"
+      >
+        <h1
+          class="font-comic text-4xl text-red-600 drop-shadow-[2px_2px_0_#000]"
+        >
+          ULTIMATE HERO
+        </h1>
+      </div>
+
+      <div class="flex md:flex-col gap-2 w-full">
+        <div
+          class="comic-box p-2 flex-1 flex flex-col justify-center bg-yellow-50 min-w-[100px]"
+        >
+          <div
+            class="flex justify-between text-[10px] font-black text-gray-400 uppercase"
+          >
+            <span>Ouro</span>
+            <span id="prestigeCount" class="text-purple-600 hidden"
+              ><i class="fas fa-gem"></i> 0</span
+            >
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="fas fa-coins text-yellow-500 text-lg"></i>
+            <span
+              id="scoreDisplay"
+              class="font-comic text-2xl text-gray-800 leading-none"
+              >0</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="comic-box p-2 flex-1 flex flex-col justify-center bg-red-50 min-w-[100px]"
+        >
+          <p class="text-[10px] font-black text-gray-400 uppercase">Dano/Seg</p>
+          <div class="flex items-center gap-2">
+            <i class="fas fa-meteor text-red-500 text-lg"></i>
+            <span
+              id="dpsDisplay"
+              class="font-comic text-2xl text-gray-800 leading-none"
+              >0</span
+            >
+          </div>
+        </div>
+        <button
+          class="md:hidden comic-btn bg-gray-800 text-white w-12"
+          id="btnMenuMobile"
+        >
+          <i class="fas fa-bars"></i>
+        </button>
+      </div>
+
+      <div class="hidden md:flex flex-1 flex-col mt-4 gap-2 overflow-hidden">
+        <div
+          class="comic-box p-2 bg-blue-50 flex-1 overflow-y-auto custom-scroll"
+        >
+          <h3
+            class="font-comic text-lg text-blue-600 border-b-2 border-blue-200 mb-2"
+          >
+            Conquistas
+          </h3>
+          <div id="miniAchievementList" class="space-y-1"></div>
+        </div>
+
+        <div class="comic-box p-3 bg-gray-800 text-white mt-auto">
+          <div class="flex justify-between text-sm font-bold">
+            <span>Nível:</span>
+            <span id="levelDisplay" class="text-yellow-400">1</span>
+          </div>
+          <button
+            id="btnOptionsDesktop"
+            class="comic-btn bg-yellow-400 text-black w-full mt-2 py-1 text-sm hover:bg-yellow-300"
+          >
+            OPÇÕES
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="relative flex-1 h-[50vh] md:h-full flex flex-col items-center justify-center overflow-hidden bg-city transition-all duration-1000"
+      id="gameZone"
+    >
+      <div class="absolute inset-0 bg-pattern"></div>
+      <canvas id="canvasOverlay"></canvas>
+
+      <div id="bossTimerContainer" class="absolute top-4 w-64 z-20 hidden">
+        <div
+          class="comic-box bg-red-600 text-white px-2 py-1 transform -rotate-1 flex justify-between font-comic text-lg"
+        >
+          <span class="animate-pulse">⚠️ CHEFE ⚠️</span>
+          <span id="bossTimerText">30s</span>
+        </div>
+        <div class="w-full h-3 bg-black border-2 border-black mt-1">
+          <div
+            id="bossTimerBar"
+            class="h-full bg-yellow-400"
+            style="width: 100%"
+          ></div>
+        </div>
+      </div>
+
+      <div
+        class="relative z-20 w-64 text-center mb-4 select-none pointer-events-none"
+      >
+        <h2
+          id="villainName"
+          class="font-comic text-3xl text-white drop-shadow-[2px_2px_0_#000] stroke-black mb-1"
+        >
+          Vilão
+        </h2>
+        <div
+          class="w-full h-6 bg-gray-900 border-2 border-white rounded-full overflow-hidden relative shadow-lg"
+        >
+          <div
+            id="hpBar"
+            class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-100"
+            style="width: 100%"
+          ></div>
+          <p
+            id="hpText"
+            class="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow"
+          >
+            20 / 20
+          </p>
+        </div>
+      </div>
+
+      <div
+        id="clickZone"
+        class="relative z-20 flex-1 w-full flex items-center justify-center cursor-pointer group select-none outline-none"
+      >
+        <div
+          id="villainSprite"
+          class="text-[8rem] md:text-[10rem] transition-transform filter drop-shadow-2xl text-white relative"
+        >
+          <i id="villainIcon" class="fas fa-mask"></i>
+        </div>
+      </div>
+
+      <div
+        id="comboContainer"
+        class="absolute bottom-24 md:bottom-32 right-4 md:right-10 z-10 hidden transform rotate-6 transition-all"
+      >
+        <h1
+          id="comboText"
+          class="font-comic text-5xl text-yellow-400 drop-shadow-[3px_3px_0_#000] animate-bounce"
+        >
+          x1
+        </h1>
+      </div>
+
+      <div class="w-full max-w-md px-4 pb-4 grid grid-cols-3 gap-3 z-30">
+        <button
+          id="skill1"
+          class="comic-btn bg-orange-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50 relative"
+        >
+          <i class="fas fa-fire text-xl mb-1"></i>
+          <span class="text-[10px] leading-none">FÚRIA</span>
+          <div
+            id="cd-fury"
+            class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"
+          ></div>
+        </button>
+        <button
+          id="skill2"
+          class="comic-btn bg-blue-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50 relative"
+        >
+          <i class="fas fa-crosshairs text-xl mb-1"></i>
+          <span class="text-[10px] leading-none">MIRA</span>
+          <div
+            id="cd-crit"
+            class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"
+          ></div>
+        </button>
+        <button
+          id="skill3"
+          class="comic-btn bg-green-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50 relative"
+        >
+          <i class="fas fa-users text-xl mb-1"></i>
+          <span class="text-[10px] leading-none">LIGA</span>
+          <div
+            id="cd-team"
+            class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"
+          ></div>
+        </button>
+      </div>
+    </div>
+
+    <div
+      class="w-full md:w-1/4 h-flex-1 md:h-full bg-gray-100 border-l-0 md:border-l-4 border-black flex flex-col z-30 shadow-xl"
+    >
+      <div class="flex border-b-4 border-black bg-white">
+        <button
+          id="tabUpgrades"
+          class="flex-1 py-3 font-comic text-xl bg-yellow-300 border-r-2 border-black relative top-[2px]"
+        >
+          <i class="fas fa-dumbbell"></i>
+        </button>
+        <button
+          id="tabHeroes"
+          class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 border-r-2 border-black hover:bg-gray-100"
+        >
+          <i class="fas fa-mask"></i>
+        </button>
+        <button
+          id="tabArtifacts"
+          class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 hover:bg-gray-100"
+        >
+          <i class="fas fa-trophy"></i>
+        </button>
+      </div>
+
+      <div
+        id="panelUpgrades"
+        class="flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"
+      ></div>
+      <div
+        id="panelHeroes"
+        class="hidden flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"
+      ></div>
+      <div
+        id="panelArtifacts"
+        class="hidden flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-2 custom-scroll pb-20 md:pb-4 bg-gray-100 content-start"
+      ></div>
+    </div>
+
+    <div
+      id="settingsModal"
+      class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm"
+    >
+      <div
+        class="comic-box p-6 w-full max-w-sm bg-purple-900 border-4 border-white text-center"
+      >
+        <h2 class="font-comic text-4xl text-yellow-400 mb-2">Multiverso</h2>
+
+        <div
+          class="bg-black/30 p-4 rounded mb-4 text-white text-left text-sm space-y-1"
+        >
+          <div class="flex justify-between">
+            <span>Som:</span>
+            <button id="muteBtn" class="font-bold text-yellow-400">
+              LIGADO
+            </button>
+          </div>
+          <div class="flex justify-between">
+            <span>Partículas:</span>
+            <button id="partBtn" class="font-bold text-yellow-400">
+              LIGADO
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <div class="bg-white text-black font-bold p-2 mb-2 rounded">
+            Cristais a Receber:
+            <span id="prestigeGain" class="text-purple-600 text-xl">0</span>
+          </div>
+          <button
+            id="btnPrestige"
+            class="comic-btn bg-red-500 text-white w-full py-2 text-lg hover:bg-red-600"
+          >
+            RESETAR MULTIVERSO
+          </button>
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            id="btnSave"
+            class="flex-1 comic-btn bg-blue-500 text-white py-2"
+          >
+            SALVAR
+          </button>
+          <button
+            id="btnCloseSettings"
+            class="flex-1 comic-btn bg-white text-black py-2"
+          >
+            VOLTAR
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="notificationArea"
+      class="fixed top-20 right-4 flex flex-col space-y-2 z-[100] pointer-events-none items-end"
+    ></div>
+
+    <script type="module" src="./js/main.js"></script>
+  </body>
+</html>
