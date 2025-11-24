@@ -1,16 +1,21 @@
 import { gameData } from "../core/GameData.js";
 
 export const SaveSys = {
-  STORAGE_KEY: "heroClickerModularV2",
-  SAVE_VERSION: "2.1", // Atualizado para nova versão com missões
+  STORAGE_KEY: "heroClickerModularV2_Encoded",
+  SAVE_VERSION: "2.1",
 
   save() {
     try {
       gameData.lastSaveTime = Date.now();
-      gameData.saveVersion = this.SAVE_VERSION;
+      gameData.saveVersion = SaveSys.SAVE_VERSION; // Uso explícito de SaveSys
 
-      const dataToSave = this.prepareDataForSave();
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(dataToSave));
+      const dataToSave = SaveSys.prepareDataForSave();
+      const jsonString = JSON.stringify(dataToSave);
+
+      // Codifica em Base64 para segurança básica
+      const encodedData = btoa(jsonString);
+
+      localStorage.setItem(SaveSys.STORAGE_KEY, encodedData);
       return true;
     } catch (error) {
       console.error("SaveSys: Erro ao salvar", error);
@@ -19,10 +24,7 @@ export const SaveSys = {
   },
 
   prepareDataForSave() {
-    // Cria uma cópia segura dos dados
     const saveData = {};
-
-    // Campos simples
     const simpleFields = [
       "score",
       "crystals",
@@ -45,21 +47,18 @@ export const SaveSys = {
       }
     });
 
-    // Estruturas complexas com validação
-    saveData.achievements = this.safeCopy(gameData.achievements, "done");
-    saveData.upgrades = this.safeCopy(gameData.upgrades, "count");
-    saveData.heroes = this.safeCopy(gameData.heroes, "count");
-    saveData.artifacts = this.safeCopy(gameData.artifacts, "owned");
-    saveData.skills = this.safeCopy(gameData.skills, [
+    saveData.achievements = SaveSys.safeCopy(gameData.achievements, "done");
+    saveData.upgrades = SaveSys.safeCopy(gameData.upgrades, "count");
+    saveData.heroes = SaveSys.safeCopy(gameData.heroes, "count");
+    saveData.artifacts = SaveSys.safeCopy(gameData.artifacts, "owned");
+    saveData.skills = SaveSys.safeCopy(gameData.skills, [
       "active",
       "cooldown",
       "duration",
     ]);
 
-    // SALVAR SISTEMA DE MISSÕES DIÁRIAS - NOVO
-    saveData.dailyMissions = this.prepareMissionsForSave();
-
-    saveData.saveVersion = this.SAVE_VERSION;
+    saveData.dailyMissions = SaveSys.prepareMissionsForSave();
+    saveData.saveVersion = SaveSys.SAVE_VERSION;
     return saveData;
   },
 
@@ -80,7 +79,6 @@ export const SaveSys = {
       if (source[key] && typeof source[key] === "object") {
         copy[key] = {};
 
-        // Copia propriedades específicas
         if (Array.isArray(properties)) {
           properties.forEach((prop) => {
             if (source[key][prop] !== undefined) {
@@ -92,8 +90,6 @@ export const SaveSys = {
             copy[key][properties] = source[key][properties];
           }
         }
-
-        // Mantém estrutura básica
         copy[key].id = source[key].id || key;
       }
     }
@@ -102,27 +98,45 @@ export const SaveSys = {
 
   load() {
     try {
-      const saved = localStorage.getItem(this.STORAGE_KEY);
-      if (!saved) return false;
+      const saved = localStorage.getItem(SaveSys.STORAGE_KEY);
 
-      const loadedData = JSON.parse(saved);
-
-      // Verifica versão do save
-      if (loadedData.saveVersion !== this.SAVE_VERSION) {
-        console.warn("SaveSys: Versão de save diferente, migração necessária");
-        return this.migrateSave(loadedData);
+      // Suporte a migração do save antigo (sem encode)
+      if (!saved) {
+        const legacySave = localStorage.getItem("heroClickerModularV2");
+        if (legacySave) {
+          console.log("SaveSys: Migrando save legado...");
+          const data = JSON.parse(legacySave);
+          SaveSys.mergeData(data);
+          SaveSys.save(); // Salva no novo formato
+          return true;
+        }
+        return false;
       }
 
-      return this.mergeData(loadedData);
+      let loadedData;
+      try {
+        const decodedString = atob(saved);
+        loadedData = JSON.parse(decodedString);
+      } catch (e) {
+        console.warn(
+          "SaveSys: Falha ao decodificar, tentando formato antigo..."
+        );
+        loadedData = JSON.parse(saved);
+      }
+
+      if (loadedData.saveVersion !== SaveSys.SAVE_VERSION) {
+        return SaveSys.migrateSave(loadedData);
+      }
+
+      return SaveSys.mergeData(loadedData);
     } catch (error) {
       console.error("SaveSys: Erro ao carregar", error);
-      this.createBackup();
+      SaveSys.createBackup();
       return false;
     }
   },
 
   mergeData(loadedData) {
-    // Merge seguro campo por campo
     const fields = [
       "score",
       "crystals",
@@ -145,31 +159,27 @@ export const SaveSys = {
       }
     });
 
-    // Merge de estruturas complexas
-    this.mergeStructures(
+    SaveSys.mergeStructures(
       gameData.achievements,
       loadedData.achievements,
       "done"
     );
-    this.mergeStructures(gameData.upgrades, loadedData.upgrades, "count");
-    this.mergeStructures(gameData.heroes, loadedData.heroes, "count");
-    this.mergeStructures(gameData.artifacts, loadedData.artifacts, "owned");
-    this.mergeStructures(gameData.skills, loadedData.skills, [
+    SaveSys.mergeStructures(gameData.upgrades, loadedData.upgrades, "count");
+    SaveSys.mergeStructures(gameData.heroes, loadedData.heroes, "count");
+    SaveSys.mergeStructures(gameData.artifacts, loadedData.artifacts, "owned");
+    SaveSys.mergeStructures(gameData.skills, loadedData.skills, [
       "active",
       "cooldown",
       "duration",
     ]);
 
-    // MERGE DE MISSÕES DIÁRIAS - NOVO
-    this.mergeMissionsData(loadedData.dailyMissions);
-
+    SaveSys.mergeMissionsData(loadedData.dailyMissions);
     return true;
   },
 
   mergeMissionsData(loadedMissions) {
     if (!loadedMissions) return;
 
-    // Preservar dados existentes ou inicializar se necessário
     if (!gameData.dailyMissions) {
       gameData.dailyMissions = {
         lastReset: Date.now(),
@@ -186,7 +196,6 @@ export const SaveSys = {
       };
     }
 
-    // Mesclar dados carregados
     if (loadedMissions.lastReset)
       gameData.dailyMissions.lastReset = loadedMissions.lastReset;
     if (loadedMissions.completedToday !== undefined)
@@ -203,7 +212,6 @@ export const SaveSys = {
 
   mergeStructures(target, source, properties) {
     if (!source) return;
-
     for (const key in source) {
       if (target[key] && source[key]) {
         if (Array.isArray(properties)) {
@@ -223,8 +231,6 @@ export const SaveSys = {
 
   migrateSave(oldData) {
     console.log("SaveSys: Migrando dados antigos");
-
-    // Migração de versão 2.0 para 2.1 (adicionando sistema de missões)
     if (!oldData.dailyMissions) {
       oldData.dailyMissions = {
         lastReset: Date.now(),
@@ -240,14 +246,13 @@ export const SaveSys = {
         },
       };
     }
-
-    return this.mergeData(oldData);
+    return SaveSys.mergeData(oldData);
   },
 
   createBackup() {
     try {
       const backup = JSON.stringify(gameData);
-      localStorage.setItem(`${this.STORAGE_KEY}_backup`, backup);
+      localStorage.setItem(`${SaveSys.STORAGE_KEY}_backup`, backup);
     } catch (error) {
       console.error("SaveSys: Erro ao criar backup", error);
     }
@@ -259,8 +264,7 @@ export const SaveSys = {
       const diffMs = now - gameData.lastSaveTime;
 
       if (diffMs > 60000 && diffMs < 30 * 24 * 60 * 60 * 1000) {
-        // Máximo 30 dias
-        const seconds = Math.min(diffMs / 1000, 24 * 60 * 60); // Máximo 24 horas
+        const seconds = Math.min(diffMs / 1000, 24 * 60 * 60);
         const dps = calculateDPSFn();
 
         if (dps > 0) {
@@ -268,7 +272,7 @@ export const SaveSys = {
           if (earned > 0) {
             gameData.score += earned;
             return {
-              time: this.formatTime(seconds),
+              time: SaveSys.formatTime(seconds),
               gold: earned,
             };
           }
@@ -287,7 +291,6 @@ export const SaveSys = {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-
     return `${hours.toString().padStart(2, "0")}:${minutes
       .toString()
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
@@ -295,7 +298,8 @@ export const SaveSys = {
 
   reset() {
     try {
-      localStorage.removeItem(this.STORAGE_KEY);
+      localStorage.removeItem(SaveSys.STORAGE_KEY);
+      localStorage.removeItem("heroClickerModularV2"); // Limpa legado também
       return true;
     } catch (error) {
       console.error("SaveSys: Erro ao resetar", error);

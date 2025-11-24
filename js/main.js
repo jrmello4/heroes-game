@@ -35,8 +35,11 @@ let lastSpecialVillainCheck = 0;
 const RENDER_INTERVAL = 1000 / 30;
 const SAVE_INTERVAL = 30000;
 const WEAK_POINT_INTERVAL = 4000;
-const ACHIEVEMENT_CHECK_INTERVAL = 1000; // Checagem mais rápida (1s)
+const ACHIEVEMENT_CHECK_INTERVAL = 1000;
 const SPECIAL_VILLAIN_CHECK = 5000;
+
+// Cache para otimização de performance
+let achievementBonusCache = 0;
 
 const weakPointPool = [];
 
@@ -45,12 +48,10 @@ function init() {
 
   try {
     AudioSys.init().catch((error) => {
-      ErrorHandler.logError({
-        type: ErrorType.WARNING,
-        message: "Áudio não inicializado",
-        stack: error.stack,
-        timestamp: Date.now(),
-      });
+      // Falha silenciosa ou log leve para áudio
+      console.warn(
+        "Áudio não pôde iniciar automaticamente (esperado em navegadores modernos)"
+      );
     });
   } catch (e) {
     console.warn("Audio init falhou", e);
@@ -59,7 +60,11 @@ function init() {
   ParticleSys.init();
   Renderer.init();
 
-  const loadSuccess = ErrorHandler.safeExecute(SaveSys.load, false)();
+  // CORREÇÃO DO CONTEXTO DO THIS: Usamos arrow function () => SaveSys.load()
+  const loadSuccess = ErrorHandler.safeExecute(() => SaveSys.load(), false)();
+
+  // Atualiza cache inicial
+  updateAchievementBonusCache();
 
   if (
     Number.isNaN(gameData.villainCurrentHp) ||
@@ -80,6 +85,7 @@ function init() {
   MissionSys.init();
 
   ErrorHandler.safeExecute(() => {
+    // Passamos a referência da função calculateDPS
     const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
     if (offlineData) {
       const offlineTimeEl = document.getElementById("offlineTime");
@@ -114,6 +120,10 @@ function init() {
   Renderer.updateMissions();
 
   ErrorHandler.showSuccess("Jogo pronto!");
+}
+
+function updateAchievementBonusCache() {
+  achievementBonusCache = getAchievementBonus();
 }
 
 function initializeWeakPoints() {
@@ -180,7 +190,8 @@ function update(dt) {
   }
 
   if (currentTime - lastSaveTime > SAVE_INTERVAL) {
-    ErrorHandler.safeExecute(SaveSys.save)();
+    // CORREÇÃO DO CONTEXTO DO THIS
+    ErrorHandler.safeExecute(() => SaveSys.save())();
     lastSaveTime = currentTime;
   }
 
@@ -281,7 +292,8 @@ function render() {
 function calculateDPS() {
   try {
     let dps = gameData.autoDamage;
-    let mult = 1 + gameData.crystals * 0.1 + getAchievementBonus();
+    // OTIMIZAÇÃO: Usa o cache
+    let mult = 1 + gameData.crystals * 0.1 + achievementBonusCache;
     if (gameData.artifacts[ArtifactType.CAPE].owned) mult += 0.2;
     if (gameData.skills[SkillType.FURY].active) mult *= 2;
     if (gameData.skills[SkillType.TEAM].active) mult *= 2;
@@ -309,11 +321,11 @@ async function handleInput(x, y, forcedCrit = false) {
     async () => {
       await AudioSys.ensureAudio();
 
-      // CORREÇÃO: Incrementa cliques globais
       if (gameData.totalClicks === undefined) gameData.totalClicks = 0;
       gameData.totalClicks++;
 
-      let bonusMult = 1 + gameData.crystals * 0.1 + getAchievementBonus();
+      // OTIMIZAÇÃO: Usa o cache aqui também
+      let bonusMult = 1 + gameData.crystals * 0.1 + achievementBonusCache;
       if (gameData.artifacts[ArtifactType.RING].owned) bonusMult += 0.2;
       if (gameData.skills[SkillType.TEAM].active) bonusMult *= 2;
 
@@ -553,7 +565,8 @@ function checkAchievements() {
     }
 
     if (hasChanged) {
-      Shop.render(); // Atualiza UI imediatamente
+      updateAchievementBonusCache(); // Atualiza cache
+      Shop.render();
     }
   } catch (error) {
     console.warn("Erro no checkAchievements:", error);
@@ -725,6 +738,7 @@ function setupEvents() {
       {
         id: "btnSave",
         fn: () => {
+          // CORREÇÃO: Chama save corretamente
           SaveSys.save();
           document.getElementById("settingsModal").classList.add("hidden");
           ErrorHandler.showSuccess("Jogo Salvo!");
