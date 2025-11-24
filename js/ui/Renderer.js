@@ -2,6 +2,8 @@ import { gameData } from "../core/GameData.js";
 import { MissionSys } from "../systems/MissionSys.js";
 import { SkillType } from "../core/Constants.js";
 
+// ... (Funções auxiliares de missão permanecem iguais, focando no Renderer principal)
+
 function createMissionElement(mission) {
   const div = document.createElement("div");
   div.id = `mission-${mission.id}`;
@@ -100,12 +102,18 @@ export const Renderer = {
   els: {},
 
   init() {
+    // Tenta pegar os elementos. Se falhar, tenta pegar novamente durante os updates
+    this.refreshElements();
+  },
+
+  refreshElements() {
     this.els = {
       score: document.getElementById("scoreDisplay"),
       dps: document.getElementById("dpsDisplay"),
       hpText: document.getElementById("hpText"),
       hpBar: document.getElementById("hpBar"),
       level: document.getElementById("levelDisplay"),
+      levelSettings: document.getElementById("levelDisplaySettings"),
       prestigeGain: document.getElementById("prestigeGain"),
       prestigeCount: document.getElementById("prestigeCount"),
       bossTimerText: document.getElementById("bossTimerText"),
@@ -128,12 +136,14 @@ export const Renderer = {
   },
 
   formatNumber(num) {
+    if (num === undefined || num === null || isNaN(num)) return "0";
     if (num >= 1e6) return (num / 1e6).toFixed(2) + "M";
     if (num >= 1e3) return (num / 1e3).toFixed(1) + "k";
     return Math.floor(num);
   },
 
   updateStats(dps) {
+    if (!this.els.score) this.refreshElements();
     if (!this.els.score) return;
 
     const currentScore = Math.floor(gameData.score);
@@ -151,61 +161,81 @@ export const Renderer = {
     }
 
     if (currentLevel !== this.state.lastLevel) {
-      this.els.level.innerText = currentLevel;
+      if (this.els.level) this.els.level.innerText = currentLevel;
+      if (this.els.levelSettings)
+        this.els.levelSettings.innerText = currentLevel;
       this.state.lastLevel = currentLevel;
     }
 
     const pGain = Math.floor(gameData.totalScoreRun / 1000000);
-    this.els.prestigeGain.innerText = pGain;
+    if (this.els.prestigeGain) this.els.prestigeGain.innerText = pGain;
 
-    if (gameData.crystals > 0) {
+    if (gameData.crystals > 0 && this.els.prestigeCount) {
       this.els.prestigeCount.classList.remove("hidden");
       this.els.prestigeCount.innerHTML = `<i class="fas fa-gem"></i> ${gameData.crystals}`;
     }
   },
 
   updateVillainHealth() {
-    const pct = Math.max(
-      0,
-      (gameData.villainCurrentHp / gameData.villainMaxHp) * 100
-    );
+    if (!this.els.hpBar) this.refreshElements();
+    if (!this.els.hpBar) return;
 
-    if (Math.abs(pct - this.state.lastHP) > 0.5) {
+    // Proteção contra dados inválidos
+    const max = gameData.villainMaxHp || 20;
+    const current = Math.max(0, gameData.villainCurrentHp);
+
+    const pct = (current / max) * 100;
+
+    // CORREÇÃO: Removemos a checagem de 0.5% para garantir que a barra sempre mova
+    if (Math.abs(pct - this.state.lastHP) > 0.01 || pct === 0 || pct === 100) {
       this.els.hpBar.style.width = `${pct}%`;
       this.state.lastHP = pct;
     }
 
     const newHPText = `${this.formatNumber(
-      Math.ceil(gameData.villainCurrentHp)
-    )} / ${this.formatNumber(gameData.villainMaxHp)}`;
+      Math.ceil(current)
+    )} / ${this.formatNumber(max)}`;
 
     if (newHPText !== this.state.lastHPText) {
-      this.els.hpText.innerText = newHPText;
+      if (this.els.hpText) this.els.hpText.innerText = newHPText;
       this.state.lastHPText = newHPText;
     }
   },
 
   updateBossTimer(timeLeft) {
-    this.els.bossTimerText.innerText = Math.ceil(timeLeft) + "s";
-    this.els.bossTimerBar.style.width = (timeLeft / 30) * 100 + "%";
+    if (!this.els.bossTimerText) return;
+    this.els.bossTimerText.innerText = Math.ceil(Math.max(0, timeLeft)) + "s";
+    this.els.bossTimerBar.style.width =
+      (Math.max(0, timeLeft) / 30) * 100 + "%";
   },
 
   toggleBossUI(isBoss) {
+    if (!this.els.bossContainer) return;
     if (isBoss) this.els.bossContainer.classList.remove("hidden");
     else this.els.bossContainer.classList.add("hidden");
   },
 
   updateVillainSprite(v, isBoss) {
+    if (!this.els.villainName) this.refreshElements();
+
     this.els.villainName.innerText = isBoss
       ? v
       : `Nvl ${gameData.level} ${v.name}`;
-    this.els.villainIcon.className = isBoss ? "fas fa-dragon" : `fas ${v.icon}`;
+
+    if (this.els.villainIcon) {
+      this.els.villainIcon.className = isBoss
+        ? "fas fa-dragon"
+        : `fas ${v.icon}`;
+    }
 
     const newClass = isBoss
       ? "text-[9rem] md:text-[11rem] transition-transform filter drop-shadow-2xl text-red-600 relative"
       : `text-[8rem] md:text-[10rem] transition-transform filter drop-shadow-2xl ${v.color} relative`;
 
-    if (this.els.villainSprite.className !== newClass) {
+    if (
+      this.els.villainSprite &&
+      this.els.villainSprite.className !== newClass
+    ) {
       this.els.villainSprite.className = newClass;
     }
   },
@@ -213,7 +243,7 @@ export const Renderer = {
   showSpecialVillainIndicator(villain) {
     let indicator = document.getElementById("specialVillainIndicator");
 
-    if (!indicator) {
+    if (!indicator && this.els.gameZone) {
       indicator = document.createElement("div");
       indicator.id = "specialVillainIndicator";
       indicator.className =
@@ -221,17 +251,19 @@ export const Renderer = {
       this.els.gameZone.appendChild(indicator);
     }
 
-    indicator.innerHTML = `
-        <div class="comic-box bg-purple-600 text-white px-4 py-2 border-3 border-yellow-400 animate-pulse">
-          <div class="flex items-center gap-2">
-            <i class="fas fa-star text-yellow-400"></i>
-            <span class="font-comic text-sm">⭐ ${villain.name} ⭐</span>
-            <i class="fas fa-star text-yellow-400"></i>
-          </div>
-          <div class="text-xs text-center mt-1 opacity-90">${villain.effect}</div>
-        </div>
-      `;
-    indicator.classList.remove("hidden");
+    if (indicator) {
+      indicator.innerHTML = `
+            <div class="comic-box bg-purple-600 text-white px-4 py-2 border-3 border-yellow-400 animate-pulse">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-star text-yellow-400"></i>
+                <span class="font-comic text-sm">⭐ ${villain.name} ⭐</span>
+                <i class="fas fa-star text-yellow-400"></i>
+            </div>
+            <div class="text-xs text-center mt-1 opacity-90">${villain.effect}</div>
+            </div>
+        `;
+      indicator.classList.remove("hidden");
+    }
   },
 
   hideSpecialVillainIndicator() {
@@ -242,13 +274,15 @@ export const Renderer = {
   },
 
   animateHit() {
+    if (!this.els.villainSprite) return;
     this.els.villainSprite.classList.remove("villain-hit");
-    requestAnimationFrame(() => {
-      this.els.villainSprite.classList.add("villain-hit");
-    });
+    // Força reflow para reiniciar animação
+    void this.els.villainSprite.offsetWidth;
+    this.els.villainSprite.classList.add("villain-hit");
   },
 
   updateCombo(val) {
+    if (!this.els.comboContainer) return;
     this.els.comboContainer.classList.remove("hidden");
     this.els.comboText.innerText = `x${val}`;
     if (val > 5) MissionSys.updateProgress("combo", val);
@@ -285,6 +319,7 @@ export const Renderer = {
   },
 
   updateEnvironment(level) {
+    if (!this.els.gameZone) return;
     const zone = Math.floor((level - 1) / 5);
     const environments = ["bg-city", "bg-sewer", "bg-space"];
     const newEnv = environments[zone % 3];
@@ -296,6 +331,7 @@ export const Renderer = {
   },
 
   updateMissions() {
+    if (!this.els.missionsContainer) this.refreshElements();
     if (!this.els.missionsContainer) return;
 
     const missions = MissionSys.currentMissions;

@@ -35,7 +35,7 @@ let lastSpecialVillainCheck = 0;
 const RENDER_INTERVAL = 1000 / 30;
 const SAVE_INTERVAL = 30000;
 const WEAK_POINT_INTERVAL = 4000;
-const ACHIEVEMENT_CHECK_INTERVAL = 2000;
+const ACHIEVEMENT_CHECK_INTERVAL = 1000; // Checagem mais rápida (1s)
 const SPECIAL_VILLAIN_CHECK = 5000;
 
 const weakPointPool = [];
@@ -53,23 +53,28 @@ function init() {
       });
     });
   } catch (e) {
-    ErrorHandler.logError({
-      type: ErrorType.WARNING,
-      message: "Falha na inicialização do áudio",
-      stack: e.stack,
-      timestamp: Date.now(),
-    });
+    console.warn("Audio init falhou", e);
   }
 
   ParticleSys.init();
   Renderer.init();
 
   const loadSuccess = ErrorHandler.safeExecute(SaveSys.load, false)();
-  if (!loadSuccess) {
-    ErrorHandler.showErrorToUser(
-      "Dados de save corrompidos. Iniciando novo jogo."
+
+  if (
+    Number.isNaN(gameData.villainCurrentHp) ||
+    Number.isNaN(gameData.villainMaxHp)
+  ) {
+    console.warn(
+      "Dados de HP corrompidos detectados. Resetando status do vilão."
     );
-    ErrorHandler.safeExecute(SaveSys.reset)();
+    gameData.villainCurrentHp = 20;
+    gameData.villainMaxHp = 20;
+    gameData.level = 1;
+  }
+
+  if (!loadSuccess) {
+    ErrorHandler.showErrorToUser("Iniciando novo jogo...");
   }
 
   MissionSys.init();
@@ -77,32 +82,38 @@ function init() {
   ErrorHandler.safeExecute(() => {
     const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
     if (offlineData) {
-      document.getElementById("offlineTime").innerText = offlineData.time;
-      document.getElementById("offlineGold").innerText = Renderer.formatNumber(
-        offlineData.gold
-      );
-      document.getElementById("offlineModal").classList.remove("hidden");
-      document.getElementById("offlineModal").style.display = "flex";
+      const offlineTimeEl = document.getElementById("offlineTime");
+      const offlineGoldEl = document.getElementById("offlineGold");
+      const offlineModal = document.getElementById("offlineModal");
+
+      if (offlineTimeEl && offlineGoldEl && offlineModal) {
+        offlineTimeEl.innerText = offlineData.time;
+        offlineGoldEl.innerText = Renderer.formatNumber(offlineData.gold);
+        offlineModal.classList.remove("hidden");
+        offlineModal.style.display = "flex";
+      }
     }
   })();
 
   initializeWeakPoints();
 
   Engine.init(
-    ErrorHandler.safeExecute(update, null, this),
-    ErrorHandler.safeExecute(render, null, this)
+    (dt) => update(dt),
+    () => render()
   );
   Engine.start();
 
   setupEvents();
 
-  render();
-  spawnVillain(false);
+  if (!currentVillain) {
+    spawnVillain(false);
+  }
+
   Renderer.updateEnvironment(gameData.level);
   Shop.render();
   Renderer.updateMissions();
 
-  ErrorHandler.showSuccess("Jogo carregado com sucesso!");
+  ErrorHandler.showSuccess("Jogo pronto!");
 }
 
 function initializeWeakPoints() {
@@ -133,6 +144,10 @@ function returnWeakPointToPool(weakPoint) {
 
 function update(dt) {
   const currentTime = Date.now();
+
+  if (!currentVillain) {
+    spawnVillain();
+  }
 
   const currentDps = ErrorHandler.safeExecute(calculateDPS, 0)();
   if (currentDps > 0) {
@@ -273,7 +288,7 @@ function calculateDPS() {
     return dps * mult;
   } catch (error) {
     console.warn("Erro no calculateDPS:", error);
-    return gameData.autoDamage;
+    return gameData.autoDamage || 0;
   }
 }
 
@@ -294,6 +309,10 @@ async function handleInput(x, y, forcedCrit = false) {
     async () => {
       await AudioSys.ensureAudio();
 
+      // CORREÇÃO: Incrementa cliques globais
+      if (gameData.totalClicks === undefined) gameData.totalClicks = 0;
+      gameData.totalClicks++;
+
       let bonusMult = 1 + gameData.crystals * 0.1 + getAchievementBonus();
       if (gameData.artifacts[ArtifactType.RING].owned) bonusMult += 0.2;
       if (gameData.skills[SkillType.TEAM].active) bonusMult *= 2;
@@ -311,6 +330,7 @@ async function handleInput(x, y, forcedCrit = false) {
       Renderer.animateHit();
 
       MissionSys.updateProgress(MissionType.CLICK);
+      Renderer.updateVillainHealth();
 
       return result;
     },
@@ -320,6 +340,9 @@ async function handleInput(x, y, forcedCrit = false) {
 
 function damageVillain(amt) {
   try {
+    if (!currentVillain) return;
+    if (isNaN(amt) || amt <= 0) return;
+
     if (currentVillain?.type === VillainType.ELUSIVE && Math.random() < 0.3) {
       ParticleSys.spawnFloatingText(
         window.innerWidth / 2,
@@ -332,7 +355,15 @@ function damageVillain(amt) {
     }
 
     gameData.villainCurrentHp -= amt;
-    if (gameData.villainCurrentHp <= 0) defeatVillain();
+
+    if (isNaN(gameData.villainCurrentHp)) {
+      gameData.villainCurrentHp = 0;
+    }
+
+    if (gameData.villainCurrentHp <= 0) {
+      gameData.villainCurrentHp = 0;
+      defeatVillain();
+    }
   } catch (error) {
     console.warn("Erro no damageVillain:", error);
   }
@@ -385,11 +416,13 @@ function defeatVillain() {
     }
 
     currentVillain = null;
-
     spawnVillain();
     Shop.render();
   } catch (error) {
     console.warn("Erro no defeatVillain:", error);
+    isBoss = false;
+    currentVillain = null;
+    spawnVillain();
   }
 }
 
@@ -406,6 +439,8 @@ function startBossFight() {
     Renderer.updateVillainSprite(bosses[bossIdx], true);
   } catch (error) {
     console.warn("Erro no startBossFight:", error);
+    isBoss = false;
+    spawnVillain();
   }
 }
 
@@ -428,18 +463,26 @@ function spawnVillain() {
     }
 
     const growth = 1.4;
-    gameData.villainMaxHp = Math.floor(
-      20 * Math.pow(growth, gameData.level - 1)
-    );
+    const lvl = Math.max(1, gameData.level || 1);
+
+    gameData.villainMaxHp = Math.floor(20 * Math.pow(growth, lvl - 1));
+
+    if (!isFinite(gameData.villainMaxHp) || isNaN(gameData.villainMaxHp)) {
+      gameData.villainMaxHp = 20;
+    }
+
     gameData.villainCurrentHp = gameData.villainMaxHp;
 
-    const v = villains[(gameData.level - 1) % villains.length];
+    const v = villains[(lvl - 1) % villains.length] || villains[0];
     currentVillain = v;
 
     Renderer.updateVillainSprite(v, false);
     Renderer.hideSpecialVillainIndicator();
   } catch (error) {
     console.warn("Erro no spawnVillain:", error);
+    gameData.villainMaxHp = 20;
+    gameData.villainCurrentHp = 20;
+    currentVillain = villains[0];
   }
 }
 
@@ -452,6 +495,8 @@ function spawnWeakPoint() {
     if (!weakPoint) return;
 
     const rect = clickZone.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
     const el = weakPoint.element;
 
     el.className = "weak-point";
@@ -480,19 +525,35 @@ function spawnWeakPoint() {
 function checkAchievements() {
   try {
     if (!gameData.achievements) return;
+
+    let hasChanged = false;
+
     for (let k in gameData.achievements) {
       const a = gameData.achievements[k];
       if (!a.done) {
+        let conditionMet = false;
+
         if (
           a.type === AchievementType.KILLS &&
           gameData.villainsDefeated >= a.req
         )
-          a.done = true;
+          conditionMet = true;
         if (a.type === AchievementType.CLICKS && gameData.totalClicks >= a.req)
-          a.done = true;
+          conditionMet = true;
         if (a.type === AchievementType.LEVEL && gameData.level >= a.req)
+          conditionMet = true;
+
+        if (conditionMet) {
           a.done = true;
+          hasChanged = true;
+          ErrorHandler.showSuccess(`🏆 Conquista Desbloqueada: ${a.name}!`);
+          AudioSys.playLevelUp(); // Som de sucesso
+        }
       }
+    }
+
+    if (hasChanged) {
+      Shop.render(); // Atualiza UI imediatamente
     }
   } catch (error) {
     console.warn("Erro no checkAchievements:", error);
@@ -566,29 +627,12 @@ function claimAllMissionRewards() {
 
 function doPrestige() {
   try {
-    const pGain = Math.floor(gameData.totalScoreRun / 1000000);
-    if (pGain <= 0) return;
-
     SaveSys.reset();
-
-    const newData = { ...gameData };
-    newData.score = 0;
-    newData.level = 1;
-    newData.clickDamage = 1;
-    newData.autoDamage = 0;
-    newData.villainsDefeated = 0;
-    newData.totalScoreRun = 0;
-    newData.crystals += pGain;
-
-    Object.keys(newData.upgrades).forEach(
-      (k) => (newData.upgrades[k].count = 0)
-    );
-    Object.keys(newData.heroes).forEach((k) => (newData.heroes[k].count = 0));
-
-    localStorage.setItem(SaveSys.STORAGE_KEY, JSON.stringify(newData));
     location.reload();
   } catch (error) {
     console.warn("Erro no doPrestige:", error);
+    localStorage.clear();
+    location.reload();
   }
 }
 
@@ -596,7 +640,10 @@ function setupEvents() {
   try {
     const clickZone = document.getElementById("clickZone");
     if (clickZone) {
-      clickZone.addEventListener("pointerdown", (e) => {
+      const newClickZone = clickZone.cloneNode(true);
+      clickZone.parentNode.replaceChild(newClickZone, clickZone);
+
+      newClickZone.addEventListener("pointerdown", (e) => {
         if (e.target.classList.contains("weak-point")) return;
         e.preventDefault();
         handleInput(e.clientX, e.clientY);
@@ -618,32 +665,40 @@ function setupEvents() {
       }
     });
 
-    ["upgrades", "heroes", "artifacts"].forEach((t) => {
+    ["upgrades", "heroes", "artifacts", "achievements"].forEach((t) => {
       const tabBtn = document.getElementById(
         "tab" + t.charAt(0).toUpperCase() + t.slice(1)
       );
       if (tabBtn) {
         tabBtn.addEventListener("click", () => {
-          ["upgrades", "heroes", "artifacts"].forEach((x) => {
-            document
-              .getElementById("panel" + x.charAt(0).toUpperCase() + x.slice(1))
-              .classList.add("hidden");
-            document
-              .getElementById("tab" + x.charAt(0).toUpperCase() + x.slice(1))
-              .classList.replace("bg-yellow-300", "bg-gray-200");
+          ["upgrades", "heroes", "artifacts", "achievements"].forEach((x) => {
+            const panel = document.getElementById(
+              "panel" + x.charAt(0).toUpperCase() + x.slice(1)
+            );
+            const tab = document.getElementById(
+              "tab" + x.charAt(0).toUpperCase() + x.slice(1)
+            );
+
+            if (panel) panel.classList.add("hidden");
+            if (tab) tab.classList.replace("bg-yellow-300", "bg-gray-200");
           });
-          document
-            .getElementById("panel" + t.charAt(0).toUpperCase() + t.slice(1))
-            .classList.remove("hidden");
-          document
-            .getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1))
-            .classList.replace("bg-gray-200", "bg-yellow-300");
+
+          const targetPanel = document.getElementById(
+            "panel" + t.charAt(0).toUpperCase() + t.slice(1)
+          );
+          const targetTab = document.getElementById(
+            "tab" + t.charAt(0).toUpperCase() + t.slice(1)
+          );
+
+          if (targetPanel) targetPanel.classList.remove("hidden");
+          if (targetTab)
+            targetTab.classList.replace("bg-gray-200", "bg-yellow-300");
+
           Shop.render();
         });
       }
     });
 
-    // Mapeamento usando SkillType
     const skills = [
       { id: "skill1", key: SkillType.FURY },
       { id: "skill2", key: SkillType.CRIT },
@@ -652,18 +707,13 @@ function setupEvents() {
     skills.forEach((skill) => {
       const btn = document.getElementById(skill.id);
       if (btn) {
-        btn.addEventListener("click", () => activateSkill(skill.key));
+        btn.onclick = () => activateSkill(skill.key);
       }
     });
 
     const uiEvents = [
       {
-        id: "btnOptionsDesktop",
-        fn: () =>
-          document.getElementById("settingsModal").classList.remove("hidden"),
-      },
-      {
-        id: "btnMenuMobile",
+        id: "btnGlobalSettings",
         fn: () =>
           document.getElementById("settingsModal").classList.remove("hidden"),
       },
@@ -677,6 +727,7 @@ function setupEvents() {
         fn: () => {
           SaveSys.save();
           document.getElementById("settingsModal").classList.add("hidden");
+          ErrorHandler.showSuccess("Jogo Salvo!");
         },
       },
       { id: "btnPrestige", fn: doPrestige },
@@ -716,5 +767,4 @@ window.addEventListener("pagehide", cleanup);
 
 window.gameData = gameData;
 
-setupEvents();
 init();

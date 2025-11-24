@@ -1,6 +1,6 @@
 import { gameData } from "../core/GameData.js";
 import { Renderer } from "./Renderer.js";
-import { ItemType } from "../core/Constants.js";
+import { ItemType, AchievementType } from "../core/Constants.js";
 
 function getOrCreateItemElement(containerId, itemId, createFn) {
   const existingEl = document.getElementById(itemId);
@@ -86,6 +86,7 @@ function generateItemHTML(
 
 export const Shop = {
   render() {
+    // === UPGRADES ===
     Object.keys(gameData.upgrades).forEach((k) => {
       const u = gameData.upgrades[k];
       const cost = Math.floor(u.baseCost * Math.pow(1.2, u.count));
@@ -108,6 +109,7 @@ export const Shop = {
       if (el) updateShopItem(el, cost, u.count, canBuy);
     });
 
+    // === HERÓIS ===
     Object.keys(gameData.heroes).forEach((k) => {
       const h = gameData.heroes[k];
       const cost = Math.floor(h.baseCost * Math.pow(1.2, h.count));
@@ -131,6 +133,7 @@ export const Shop = {
       if (el) updateShopItem(el, cost, h.count, canBuy);
     });
 
+    // === ARTEFATOS ===
     const artifactsPanel = document.getElementById("panelArtifacts");
     if (artifactsPanel) {
       let aHtml = "";
@@ -151,6 +154,80 @@ export const Shop = {
       });
       if (artifactsPanel.innerHTML !== aHtml) {
         artifactsPanel.innerHTML = aHtml;
+      }
+    }
+
+    // === CONQUISTAS (NOVO) ===
+    const achievementsPanel = document.getElementById("panelAchievements");
+    if (achievementsPanel && gameData.achievements) {
+      let achHtml = "";
+      Object.keys(gameData.achievements).forEach((k) => {
+        const a = gameData.achievements[k];
+        let progress = 0;
+        let current = 0;
+
+        if (a.type === AchievementType.KILLS)
+          current = gameData.villainsDefeated;
+        else if (a.type === AchievementType.CLICKS)
+          current = gameData.totalClicks;
+        else if (a.type === AchievementType.LEVEL) current = gameData.level;
+
+        if (current > a.req) current = a.req;
+
+        const isDone = a.done;
+
+        achHtml += `
+          <div class="comic-box p-3 mb-2 transition-all duration-300 ${
+            isDone ? "bg-green-50 border-green-500" : "bg-white"
+          }">
+            <div class="flex justify-between items-start mb-1">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-trophy ${
+                      isDone ? "text-yellow-500" : "text-gray-300"
+                    }"></i>
+                    <span class="font-bold text-sm ${
+                      isDone ? "text-green-800" : "text-gray-800"
+                    }">${a.name}</span>
+                </div>
+                ${
+                  isDone
+                    ? '<i class="fas fa-check-circle text-green-600"></i>'
+                    : ""
+                }
+            </div>
+            
+            <div class="text-xs text-gray-600 mb-2 pl-6">${a.desc}</div>
+            
+            <div class="pl-6">
+                ${
+                  !isDone
+                    ? `
+                <div class="w-full bg-gray-200 rounded-full h-2 mb-1">
+                    <div class="bg-blue-500 h-2 rounded-full transition-all duration-500" style="width: ${
+                      (current / a.req) * 100
+                    }%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-gray-500 font-bold">
+                    <span>${current} / ${a.req}</span>
+                    <span class="text-blue-600">Recompensa: +${(
+                      a.reward * 100
+                    ).toFixed(0)}% Bônus</span>
+                </div>
+                `
+                    : `
+                <div class="text-[10px] font-bold text-green-600 uppercase tracking-wider">
+                    Bônus Ativo: +${(a.reward * 100).toFixed(0)}% Ouro/DPS
+                </div>
+                `
+                }
+            </div>
+          </div>
+        `;
+      });
+
+      // Atualiza apenas se mudou para evitar flicker
+      if (achievementsPanel.innerHTML !== achHtml) {
+        achievementsPanel.innerHTML = achHtml;
       }
     }
   },
