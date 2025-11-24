@@ -48,10 +48,7 @@ function init() {
 
   try {
     AudioSys.init().catch((error) => {
-      // Falha silenciosa ou log leve para áudio
-      console.warn(
-        "Áudio não pôde iniciar automaticamente (esperado em navegadores modernos)"
-      );
+      console.warn("Áudio aguardando interação do usuário");
     });
   } catch (e) {
     console.warn("Audio init falhou", e);
@@ -60,10 +57,10 @@ function init() {
   ParticleSys.init();
   Renderer.init();
 
-  // CORREÇÃO DO CONTEXTO DO THIS: Usamos arrow function () => SaveSys.load()
+  // Contexto seguro para o SaveSys
   const loadSuccess = ErrorHandler.safeExecute(() => SaveSys.load(), false)();
 
-  // Atualiza cache inicial
+  // Inicializa o cache de conquistas
   updateAchievementBonusCache();
 
   if (
@@ -85,7 +82,6 @@ function init() {
   MissionSys.init();
 
   ErrorHandler.safeExecute(() => {
-    // Passamos a referência da função calculateDPS
     const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
     if (offlineData) {
       const offlineTimeEl = document.getElementById("offlineTime");
@@ -190,7 +186,6 @@ function update(dt) {
   }
 
   if (currentTime - lastSaveTime > SAVE_INTERVAL) {
-    // CORREÇÃO DO CONTEXTO DO THIS
     ErrorHandler.safeExecute(() => SaveSys.save())();
     lastSaveTime = currentTime;
   }
@@ -316,6 +311,7 @@ function getAchievementBonus() {
   }
 }
 
+// *** AQUI ESTAVA O ERRO PRINCIPAL CORRIGIDO ***
 async function handleInput(x, y, forcedCrit = false) {
   return await ErrorHandler.safeExecuteAsync(
     async () => {
@@ -324,7 +320,6 @@ async function handleInput(x, y, forcedCrit = false) {
       if (gameData.totalClicks === undefined) gameData.totalClicks = 0;
       gameData.totalClicks++;
 
-      // OTIMIZAÇÃO: Usa o cache aqui também
       let bonusMult = 1 + gameData.crystals * 0.1 + achievementBonusCache;
       if (gameData.artifacts[ArtifactType.RING].owned) bonusMult += 0.2;
       if (gameData.skills[SkillType.TEAM].active) bonusMult *= 2;
@@ -347,7 +342,7 @@ async function handleInput(x, y, forcedCrit = false) {
       return result;
     },
     { isCrit: false, showCombo: false }
-  )();
+  ); // <--- REMOVIDO O "()" EXTRA QUE TINHA AQUI
 }
 
 function damageVillain(amt) {
@@ -559,13 +554,13 @@ function checkAchievements() {
           a.done = true;
           hasChanged = true;
           ErrorHandler.showSuccess(`🏆 Conquista Desbloqueada: ${a.name}!`);
-          AudioSys.playLevelUp(); // Som de sucesso
+          AudioSys.playLevelUp();
         }
       }
     }
 
     if (hasChanged) {
-      updateAchievementBonusCache(); // Atualiza cache
+      updateAchievementBonusCache();
       Shop.render();
     }
   } catch (error) {
@@ -738,7 +733,6 @@ function setupEvents() {
       {
         id: "btnSave",
         fn: () => {
-          // CORREÇÃO: Chama save corretamente
           SaveSys.save();
           document.getElementById("settingsModal").classList.add("hidden");
           ErrorHandler.showSuccess("Jogo Salvo!");
