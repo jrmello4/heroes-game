@@ -2,7 +2,7 @@ import { gameData } from "../core/GameData.js";
 
 export const SaveSys = {
   STORAGE_KEY: "heroClickerModularV2",
-  SAVE_VERSION: "2.0",
+  SAVE_VERSION: "2.1", // Atualizado para nova versão com missões
 
   save() {
     try {
@@ -56,8 +56,22 @@ export const SaveSys = {
       "duration",
     ]);
 
+    // SALVAR SISTEMA DE MISSÕES DIÁRIAS - NOVO
+    saveData.dailyMissions = this.prepareMissionsForSave();
+
     saveData.saveVersion = this.SAVE_VERSION;
     return saveData;
+  },
+
+  prepareMissionsForSave() {
+    return {
+      lastReset: gameData.dailyMissions.lastReset,
+      completedToday: gameData.dailyMissions.completedToday,
+      currentMissions: gameData.dailyMissions.currentMissions,
+      rewardsClaimed: gameData.dailyMissions.rewardsClaimed,
+      progress: gameData.dailyMissions.progress,
+      stats: gameData.dailyMissions.stats,
+    };
   },
 
   safeCopy(source, properties) {
@@ -146,7 +160,45 @@ export const SaveSys = {
       "duration",
     ]);
 
+    // MERGE DE MISSÕES DIÁRIAS - NOVO
+    this.mergeMissionsData(loadedData.dailyMissions);
+
     return true;
+  },
+
+  mergeMissionsData(loadedMissions) {
+    if (!loadedMissions) return;
+
+    // Preservar dados existentes ou inicializar se necessário
+    if (!gameData.dailyMissions) {
+      gameData.dailyMissions = {
+        lastReset: Date.now(),
+        completedToday: 0,
+        currentMissions: [],
+        rewardsClaimed: false,
+        progress: {},
+        stats: {
+          skillsUsed: 0,
+          clicksToday: 0,
+          bossesDefeated: 0,
+          maxComboToday: 0,
+        },
+      };
+    }
+
+    // Mesclar dados carregados
+    if (loadedMissions.lastReset)
+      gameData.dailyMissions.lastReset = loadedMissions.lastReset;
+    if (loadedMissions.completedToday !== undefined)
+      gameData.dailyMissions.completedToday = loadedMissions.completedToday;
+    if (loadedMissions.currentMissions)
+      gameData.dailyMissions.currentMissions = loadedMissions.currentMissions;
+    if (loadedMissions.rewardsClaimed !== undefined)
+      gameData.dailyMissions.rewardsClaimed = loadedMissions.rewardsClaimed;
+    if (loadedMissions.progress)
+      gameData.dailyMissions.progress = loadedMissions.progress;
+    if (loadedMissions.stats)
+      gameData.dailyMissions.stats = loadedMissions.stats;
   },
 
   mergeStructures(target, source, properties) {
@@ -171,7 +223,24 @@ export const SaveSys = {
 
   migrateSave(oldData) {
     console.log("SaveSys: Migrando dados antigos");
-    // Implementar lógica de migração se necessário
+
+    // Migração de versão 2.0 para 2.1 (adicionando sistema de missões)
+    if (!oldData.dailyMissions) {
+      oldData.dailyMissions = {
+        lastReset: Date.now(),
+        completedToday: 0,
+        currentMissions: [],
+        rewardsClaimed: false,
+        progress: {},
+        stats: {
+          skillsUsed: 0,
+          clicksToday: 0,
+          bossesDefeated: 0,
+          maxComboToday: 0,
+        },
+      };
+    }
+
     return this.mergeData(oldData);
   },
 
