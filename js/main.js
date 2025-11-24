@@ -11,19 +11,27 @@ let bossTimeLeft = 0;
 let activeCritBuff = false;
 
 function init() {
-  AudioSys.init();
-  SaveSys.load();
+  try {
+    AudioSys.init();
+  } catch (e) {}
 
-  document.getElementById("startOverlay").classList.add("hidden");
-
-  const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
-  if (offlineData) {
-    document.getElementById("offlineTime").innerText = offlineData.time;
-    document.getElementById("offlineGold").innerText = Renderer.formatNumber(
-      offlineData.gold
-    );
-    document.getElementById("offlineModal").classList.remove("hidden");
+  try {
+    SaveSys.load();
+  } catch (e) {
+    SaveSys.reset();
   }
+
+  try {
+    const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
+    if (offlineData) {
+      document.getElementById("offlineTime").innerText = offlineData.time;
+      document.getElementById("offlineGold").innerText = Renderer.formatNumber(
+        offlineData.gold
+      );
+      document.getElementById("offlineModal").classList.remove("hidden");
+      document.getElementById("offlineModal").style.display = "flex";
+    }
+  } catch (e) {}
 
   Engine.init(update, render);
   Engine.start();
@@ -63,19 +71,21 @@ function update(dt) {
 }
 
 function render() {
-  Renderer.updateStats(calculateDPS());
-  Renderer.updateVillainHealth();
+  try {
+    Renderer.updateStats(calculateDPS());
+    Renderer.updateVillainHealth();
 
-  if (isBoss) Renderer.updateBossTimer(bossTimeLeft);
+    if (isBoss) Renderer.updateBossTimer(bossTimeLeft);
 
-  for (let k in gameData.skills) {
-    Renderer.updateSkillCooldown(
-      k,
-      gameData.skills[k].cooldown,
-      gameData.skills[k].maxCooldown,
-      gameData.skills[k].active
-    );
-  }
+    for (let k in gameData.skills) {
+      Renderer.updateSkillCooldown(
+        k,
+        gameData.skills[k].cooldown,
+        gameData.skills[k].maxCooldown,
+        gameData.skills[k].active
+      );
+    }
+  } catch (e) {}
 }
 
 function calculateDPS() {
@@ -88,6 +98,7 @@ function calculateDPS() {
 }
 
 function getAchievementBonus() {
+  if (!gameData.achievements) return 0;
   return Object.values(gameData.achievements).reduce(
     (acc, a) => (a.done ? acc + a.reward : acc),
     0
@@ -95,6 +106,12 @@ function getAchievementBonus() {
 }
 
 function handleInput(x, y, forcedCrit = false) {
+  if (AudioSys.ctx && AudioSys.ctx.state === "suspended") {
+    AudioSys.ctx.resume();
+  } else if (!AudioSys.ctx) {
+    AudioSys.init();
+  }
+
   let bonusMult = 1 + gameData.crystals * 0.1 + getAchievementBonus();
   if (gameData.artifacts.ring.owned) bonusMult += 0.2;
   if (gameData.skills.team.active) bonusMult *= 2;
@@ -182,7 +199,10 @@ function spawnVillain() {
 }
 
 function spawnWeakPoint() {
-  const rect = document.getElementById("clickZone").getBoundingClientRect();
+  const clickZone = document.getElementById("clickZone");
+  if (!clickZone) return;
+
+  const rect = clickZone.getBoundingClientRect();
   const el = document.createElement("div");
   el.className = "weak-point";
 
@@ -196,13 +216,14 @@ function spawnWeakPoint() {
     el.remove();
   };
 
-  document.getElementById("clickZone").appendChild(el);
+  clickZone.appendChild(el);
   setTimeout(() => {
     if (el.parentNode) el.remove();
   }, 2500);
 }
 
 function checkAchievements() {
+  if (!gameData.achievements) return;
   for (let k in gameData.achievements) {
     const a = gameData.achievements[k];
     if (!a.done) {
@@ -265,18 +286,21 @@ function doPrestige() {
 }
 
 function setupEvents() {
-  document.getElementById("startOverlay").addEventListener("click", init);
-
-  document.getElementById("clickZone").addEventListener("pointerdown", (e) => {
-    if (e.target.classList.contains("weak-point")) return;
-    e.preventDefault();
-    handleInput(e.clientX, e.clientY);
-  });
+  const clickZone = document.getElementById("clickZone");
+  if (clickZone) {
+    clickZone.addEventListener("pointerdown", (e) => {
+      if (e.target.classList.contains("weak-point")) return;
+      e.preventDefault();
+      handleInput(e.clientX, e.clientY);
+    });
+  }
 
   ["upgrades", "heroes", "artifacts"].forEach((t) => {
-    document
-      .getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1))
-      .addEventListener("click", () => {
+    const tabBtn = document.getElementById(
+      "tab" + t.charAt(0).toUpperCase() + t.slice(1)
+    );
+    if (tabBtn) {
+      tabBtn.addEventListener("click", () => {
         ["upgrades", "heroes", "artifacts"].forEach((x) => {
           document
             .getElementById("panel" + x.charAt(0).toUpperCase() + x.slice(1))
@@ -293,40 +317,52 @@ function setupEvents() {
           .classList.replace("bg-gray-200", "bg-yellow-300");
         Shop.render();
       });
+    }
   });
 
-  document
-    .getElementById("btnOptionsDesktop")
-    .addEventListener("click", () =>
-      document.getElementById("settingsModal").classList.remove("hidden")
-    );
-  document
-    .getElementById("btnMenuMobile")
-    .addEventListener("click", () =>
-      document.getElementById("settingsModal").classList.remove("hidden")
-    );
-  document
-    .getElementById("btnCloseSettings")
-    .addEventListener("click", () =>
-      document.getElementById("settingsModal").classList.add("hidden")
-    );
+  if (document.getElementById("btnOptionsDesktop"))
+    document
+      .getElementById("btnOptionsDesktop")
+      .addEventListener("click", () =>
+        document.getElementById("settingsModal").classList.remove("hidden")
+      );
 
-  document.getElementById("btnSave").addEventListener("click", () => {
-    SaveSys.save();
-    document.getElementById("settingsModal").classList.add("hidden");
-  });
+  if (document.getElementById("btnMenuMobile"))
+    document
+      .getElementById("btnMenuMobile")
+      .addEventListener("click", () =>
+        document.getElementById("settingsModal").classList.remove("hidden")
+      );
 
-  document.getElementById("btnPrestige").addEventListener("click", doPrestige);
+  if (document.getElementById("btnCloseSettings"))
+    document
+      .getElementById("btnCloseSettings")
+      .addEventListener("click", () =>
+        document.getElementById("settingsModal").classList.add("hidden")
+      );
 
-  document.getElementById("muteBtn").addEventListener("click", (e) => {
-    e.target.innerText = AudioSys.toggleMute() ? "DESLIGADO" : "LIGADO";
-  });
+  if (document.getElementById("btnSave"))
+    document.getElementById("btnSave").addEventListener("click", () => {
+      SaveSys.save();
+      document.getElementById("settingsModal").classList.add("hidden");
+    });
 
-  document
-    .getElementById("btnClaimOffline")
-    .addEventListener("click", () =>
-      document.getElementById("offlineModal").classList.add("hidden")
-    );
+  if (document.getElementById("btnPrestige"))
+    document
+      .getElementById("btnPrestige")
+      .addEventListener("click", doPrestige);
+
+  if (document.getElementById("muteBtn"))
+    document.getElementById("muteBtn").addEventListener("click", (e) => {
+      e.target.innerText = AudioSys.toggleMute() ? "DESLIGADO" : "LIGADO";
+    });
+
+  if (document.getElementById("btnClaimOffline"))
+    document.getElementById("btnClaimOffline").addEventListener("click", () => {
+      const modal = document.getElementById("offlineModal");
+      modal.classList.add("hidden");
+      modal.style.display = "none";
+    });
 }
 
 window.game = {
@@ -335,3 +371,4 @@ window.game = {
 };
 
 setupEvents();
+init();
