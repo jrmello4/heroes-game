@@ -10,15 +10,12 @@ let isBoss = false;
 let bossTimeLeft = 0;
 let activeCritBuff = false;
 
-// --- INICIALIZAÇÃO ---
 function init() {
   AudioSys.init();
-  SaveSys.load(); // Carrega o jogo salvo
+  SaveSys.load();
 
-  // Esconde a tela de "Toque para Começar"
   document.getElementById("startOverlay").classList.add("hidden");
 
-  // Verifica ganho offline
   const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
   if (offlineData) {
     document.getElementById("offlineTime").innerText = offlineData.time;
@@ -28,32 +25,25 @@ function init() {
     document.getElementById("offlineModal").classList.remove("hidden");
   }
 
-  // Inicia o Motor (Loop)
   Engine.init(update, render);
   Engine.start();
 
-  // Configura Loops Auxiliares
-  setInterval(() => SaveSys.save(), 5000); // Salva a cada 5s
+  setInterval(() => SaveSys.save(), 5000);
   setInterval(() => {
     if (!isBoss && Math.random() > 0.7) spawnWeakPoint();
-  }, 4000); // Ponto Fraco
-  setInterval(checkAchievements, 2000); // Checa conquistas
+  }, 4000);
+  setInterval(checkAchievements, 2000);
 
-  // Renderização Inicial
   render();
   spawnVillain(false);
   Renderer.updateEnvironment(gameData.level);
-  setupEvents();
   Shop.render();
 }
 
-// --- LOOP LÓGICO (UPDATE) ---
 function update(dt) {
-  // Dano Automático (DPS)
   let currentDps = calculateDPS();
   if (currentDps > 0) damageVillain(currentDps * dt);
 
-  // Gerencia Skills (Cooldowns e Duração)
   for (let k in gameData.skills) {
     let s = gameData.skills[k];
     if (s.cooldown > 0) s.cooldown -= dt;
@@ -66,14 +56,12 @@ function update(dt) {
     }
   }
 
-  // Timer do Chefe
   if (isBoss) {
     bossTimeLeft -= dt;
     if (bossTimeLeft <= 0) failBoss();
   }
 }
 
-// --- LOOP VISUAL (RENDER) ---
 function render() {
   Renderer.updateStats(calculateDPS());
   Renderer.updateVillainHealth();
@@ -90,10 +78,8 @@ function render() {
   }
 }
 
-// --- CÁLCULOS ---
 function calculateDPS() {
   let dps = gameData.autoDamage;
-  // Multiplicadores
   let mult = 1 + gameData.crystals * 0.1 + getAchievementBonus();
   if (gameData.artifacts.cape.owned) mult += 0.2;
   if (gameData.skills.fury.active) mult *= 2;
@@ -108,14 +94,11 @@ function getAchievementBonus() {
   );
 }
 
-// --- INPUTS & COMBATE ---
 function handleInput(x, y, forcedCrit = false) {
-  // Calcula multiplicadores do clique
   let bonusMult = 1 + gameData.crystals * 0.1 + getAchievementBonus();
   if (gameData.artifacts.ring.owned) bonusMult += 0.2;
   if (gameData.skills.team.active) bonusMult *= 2;
 
-  // Passa para o Sistema de Input processar a lógica
   const result = InputSys.handleClick(
     x,
     y,
@@ -125,7 +108,6 @@ function handleInput(x, y, forcedCrit = false) {
     damageVillain
   );
 
-  // Atualiza visual baseada na resposta do InputSys
   if (result && result.showCombo) Renderer.updateCombo(gameData.combo);
   Renderer.animateHit();
 }
@@ -138,7 +120,6 @@ function damageVillain(amt) {
 function defeatVillain() {
   gameData.villainsDefeated++;
 
-  // Recompensa
   let reward = Math.floor(gameData.villainMaxHp / 2.5);
   if (gameData.artifacts.amulet.owned) reward *= 1.1;
   if (isBoss) reward *= 10;
@@ -146,7 +127,6 @@ function defeatVillain() {
   gameData.score += reward;
   gameData.totalScoreRun += reward;
 
-  // Chance de Drop de Artefato (2%)
   if (Math.random() < 0.02) {
     const available = Object.keys(gameData.artifacts).filter(
       (k) => !gameData.artifacts[k].owned
@@ -154,12 +134,10 @@ function defeatVillain() {
     if (available.length > 0) {
       const key = available[Math.floor(Math.random() * available.length)];
       gameData.artifacts[key].owned = true;
-      // Atualiza loja para mostrar item comprado/ganho
       Shop.render();
     }
   }
 
-  // Lógica de Progressão
   if (isBoss) {
     AudioSys.playLevelUp();
     gameData.level++;
@@ -172,10 +150,9 @@ function defeatVillain() {
   }
 
   spawnVillain();
-  Shop.render(); // Atualiza botões da loja (se ficaram verdes/compráveis)
+  Shop.render();
 }
 
-// --- LÓGICA DE INIMIGOS ---
 function startBossFight() {
   isBoss = true;
   Renderer.toggleBossUI(true);
@@ -209,14 +186,13 @@ function spawnWeakPoint() {
   const el = document.createElement("div");
   el.className = "weak-point";
 
-  // Posição aleatória dentro da área de clique
   el.style.left = Math.random() * (rect.width - 60) + "px";
   el.style.top = Math.random() * (rect.height - 60) + "px";
 
   el.onpointerdown = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    handleInput(e.clientX, e.clientY, true); // Força crítico
+    handleInput(e.clientX, e.clientY, true);
     el.remove();
   };
 
@@ -226,7 +202,6 @@ function spawnWeakPoint() {
   }, 2500);
 }
 
-// --- SISTEMAS AUXILIARES ---
 function checkAchievements() {
   for (let k in gameData.achievements) {
     const a = gameData.achievements[k];
@@ -239,7 +214,6 @@ function checkAchievements() {
   }
 }
 
-// Funções expostas para o HTML (window.game)
 function buy(type, key) {
   const item = type === "hero" ? gameData.heroes[key] : gameData.upgrades[key];
   let cost = Math.floor(item.baseCost * Math.pow(1.2, item.count));
@@ -272,9 +246,8 @@ function doPrestige() {
   const pGain = Math.floor(gameData.totalScoreRun / 1000000);
   if (pGain <= 0) return;
 
-  SaveSys.reset(); // Limpa save antigo
+  SaveSys.reset();
 
-  // Cria novo estado mantendo cristais e stats persistentes
   const newData = { ...gameData };
   newData.score = 0;
   newData.level = 1;
@@ -284,7 +257,6 @@ function doPrestige() {
   newData.totalScoreRun = 0;
   newData.crystals += pGain;
 
-  // Reseta compras
   Object.keys(newData.upgrades).forEach((k) => (newData.upgrades[k].count = 0));
   Object.keys(newData.heroes).forEach((k) => (newData.heroes[k].count = 0));
 
@@ -292,7 +264,6 @@ function doPrestige() {
   location.reload();
 }
 
-// --- EVENT LISTENERS (Conecta HTML ao JS) ---
 function setupEvents() {
   document.getElementById("startOverlay").addEventListener("click", init);
 
@@ -302,7 +273,6 @@ function setupEvents() {
     handleInput(e.clientX, e.clientY);
   });
 
-  // Abas da Loja
   ["upgrades", "heroes", "artifacts"].forEach((t) => {
     document
       .getElementById("tab" + t.charAt(0).toUpperCase() + t.slice(1))
@@ -325,7 +295,6 @@ function setupEvents() {
       });
   });
 
-  // Botões de Menu e Config
   document
     .getElementById("btnOptionsDesktop")
     .addEventListener("click", () =>
@@ -360,8 +329,9 @@ function setupEvents() {
     );
 }
 
-// Expõe funções para o HTML usar onclick="..."
 window.game = {
   buy,
   activateSkill,
 };
+
+setupEvents();
