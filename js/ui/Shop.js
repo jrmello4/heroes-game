@@ -89,7 +89,8 @@ export const Shop = {
     // === UPGRADES ===
     Object.keys(gameData.upgrades).forEach((k) => {
       const u = gameData.upgrades[k];
-      const cost = Math.floor(u.baseCost * Math.pow(1.2, u.count));
+      // MARKET BALANCE: 1.15x
+      const cost = Math.floor(u.baseCost * Math.pow(1.15, u.count));
       const canBuy = gameData.score >= cost;
       const itemId = `upgrade-${k}`;
 
@@ -112,7 +113,8 @@ export const Shop = {
     // === HERÓIS ===
     Object.keys(gameData.heroes).forEach((k) => {
       const h = gameData.heroes[k];
-      const cost = Math.floor(h.baseCost * Math.pow(1.2, h.count));
+      // MARKET BALANCE: 1.15x
+      const cost = Math.floor(h.baseCost * Math.pow(1.15, h.count));
       const canBuy = gameData.score >= cost;
       const itemId = `hero-${k}`;
 
@@ -157,7 +159,7 @@ export const Shop = {
       }
     }
 
-    // === CONQUISTAS (NOVO) ===
+    // === CONQUISTAS ===
     const achievementsPanel = document.getElementById("panelAchievements");
     if (achievementsPanel && gameData.achievements) {
       let achHtml = "";
@@ -225,7 +227,6 @@ export const Shop = {
         `;
       });
 
-      // Atualiza apenas se mudou para evitar flicker
       if (achievementsPanel.innerHTML !== achHtml) {
         achievementsPanel.innerHTML = achHtml;
       }

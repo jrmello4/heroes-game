@@ -2,9 +2,15 @@ export const ParticleSys = {
   pool: [],
   maxParticles: 30,
   container: null,
+  flashTimeout: null,
+  lastFlashTime: 0,
 
   init() {
     this.container = document.body;
+    this.pool = [];
+    this.flashTimeout = null;
+    this.lastFlashTime = 0;
+
     for (let i = 0; i < this.maxParticles; i++) {
       const el = document.createElement("div");
       el.className =
@@ -34,9 +40,8 @@ export const ParticleSys = {
 
       const el = particle.element;
 
-      // Reset animations by forcing reflow
       el.style.animation = "none";
-      el.offsetHeight; /* trigger reflow */
+      el.offsetHeight;
       el.style.animation = "floatUp 0.8s ease-out forwards";
 
       el.innerText = text;
@@ -76,12 +81,27 @@ export const ParticleSys = {
 
   flashScreen() {
     try {
+      const now = Date.now();
+      if (now - this.lastFlashTime < 300) {
+        return;
+      }
+      this.lastFlashTime = now;
+
       const f = document.getElementById("critFlash");
       if (f) {
+        if (this.flashTimeout) {
+          clearTimeout(this.flashTimeout);
+        }
+
+        f.classList.remove("active");
+        void f.offsetWidth;
+
         f.classList.add("active");
-        setTimeout(() => {
+
+        this.flashTimeout = setTimeout(() => {
           f.classList.remove("active");
-        }, 100);
+          this.flashTimeout = null;
+        }, 80);
       }
     } catch (error) {
       console.warn("ParticleSys: Erro no flash", error);

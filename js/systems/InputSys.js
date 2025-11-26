@@ -5,6 +5,7 @@ import { MissionType } from "../core/Constants.js";
 
 export const InputSys = {
   comboTimer: null,
+  lastCritTime: 0,
 
   async handleClick(
     x,
@@ -42,13 +43,26 @@ export const InputSys = {
         (activeCritBuff && Math.random() < 0.5) ||
         forcedCrit;
 
+      const now = Date.now();
+      const canFlash = now - this.lastCritTime > 300;
+
       if (isCrit) {
         mult *= 5;
         if (forcedCrit) mult *= 2;
-        await AudioSys.playCrit();
-        ParticleSys.spawnFloatingText(x, y, "CRÍTICO!", "text-yellow-400", 2.0);
-        ParticleSys.triggerScreenShake();
-        ParticleSys.flashScreen();
+
+        if (canFlash) {
+          await AudioSys.playCrit();
+          ParticleSys.spawnFloatingText(
+            x,
+            y,
+            "CRÍTICO!",
+            "text-yellow-400",
+            2.0
+          );
+          ParticleSys.triggerScreenShake();
+          ParticleSys.flashScreen();
+          this.lastCritTime = now;
+        }
       } else {
         await AudioSys.playClick();
         ParticleSys.spawnFloatingText(x, y, "POW!", "text-white", 1.0);

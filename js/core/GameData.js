@@ -7,6 +7,8 @@ import {
   ArtifactType,
 } from "./Constants.js";
 
+// === DADOS DO JOGO E BALANCEAMENTO ===
+
 export const gameData = {
   score: 0,
   crystals: 0,
@@ -15,11 +17,14 @@ export const gameData = {
   totalClicks: 0,
   startTime: Date.now(),
   lastSaveTime: Date.now(),
+
   level: 1,
   clickDamage: 1,
   autoDamage: 0,
-  villainMaxHp: 20,
-  villainCurrentHp: 20,
+
+  // Balanceamento Inicial: HP 15
+  villainMaxHp: 15,
+  villainCurrentHp: 15,
   combo: 0,
 
   dailyMissions: {
@@ -27,164 +32,189 @@ export const gameData = {
     completedToday: 0,
     currentMissions: [],
     rewardsClaimed: false,
+    progress: {},
+    stats: {
+      skillsUsed: 0,
+      clicksToday: 0,
+      bossesDefeated: 0,
+      maxComboToday: 0,
+    },
   },
 
   achievements: {
-    kill10: {
-      id: "kill10",
-      name: "Vigilante Iniciante",
+    k10: {
+      id: "k10",
+      name: "Iniciante",
       desc: "Derrote 10 vilões",
+      type: AchievementType.KILLS,
       req: 10,
-      type: AchievementType.KILLS,
-      reward: 0.1,
       done: false,
+      reward: 0.1, // +10%
     },
-    kill100: {
-      id: "kill100",
-      name: "Protetor da Cidade",
-      desc: "Derrote 100 vilões",
-      req: 100,
-      type: AchievementType.KILLS,
-      reward: 0.2,
-      done: false,
-    },
-    click500: {
-      id: "click500",
-      name: "Dedos Rápidos",
-      desc: "500 Cliques",
-      req: 500,
+    c1000: {
+      id: "c1000",
+      name: "Dedo Rápido",
+      desc: "Clique 1000 vezes",
       type: AchievementType.CLICKS,
-      reward: 0.1,
+      req: 1000,
       done: false,
+      reward: 0.15,
     },
-    level10: {
-      id: "level10",
-      name: "Subindo de Rank",
-      desc: "Alcance Nível 10",
-      req: 10,
+    l10: {
+      id: "l10",
+      name: "Patrulheiro",
+      desc: "Alcance o Nível 10",
       type: AchievementType.LEVEL,
-      reward: 0.2,
+      req: 10,
       done: false,
+      reward: 0.25,
+    },
+    k100: {
+      id: "k100",
+      name: "Vigilante",
+      desc: "Derrote 100 vilões",
+      type: AchievementType.KILLS,
+      req: 100,
+      done: false,
+      reward: 0.2,
+    },
+    l25: {
+      id: "l25",
+      name: "Herói Local",
+      desc: "Alcance o Nível 25",
+      type: AchievementType.LEVEL,
+      req: 25,
+      done: false,
+      reward: 0.5,
     },
   },
 
   upgrades: {
     gym: {
-      id: "gym",
-      name: "Academia de Boxe",
-      baseCost: 15,
+      name: "Academia",
       count: 0,
-      boost: 1,
+      baseCost: 15, // Custo baixo pra começar rápido
+      boost: 1, // +1 Dano (Dobra seu dano inicial)
       icon: "fa-dumbbell",
-      type: "click",
+      type: ItemType.UPGRADE,
     },
     brass: {
-      id: "brass",
       name: "Soco Inglês",
-      baseCost: 100,
       count: 0,
-      boost: 5,
+      baseCost: 150, // Salto para ~10x o anterior
+      boost: 5, // Eficiência: 30 gold/dano
       icon: "fa-hand-rock",
-      type: "click",
+      type: ItemType.UPGRADE,
     },
     gadget: {
-      id: "gadget",
-      name: "Batarangue",
-      baseCost: 500,
+      name: "Gadgets",
       count: 0,
-      boost: 15,
+      baseCost: 1100, // ~7x o anterior
+      boost: 20, // +20 Dano
       icon: "fa-bullseye",
-      type: "click",
+      type: ItemType.UPGRADE,
     },
     serum: {
-      id: "serum",
-      name: "Soro Experimental",
-      baseCost: 2000,
+      name: "Super Soro",
       count: 0,
-      boost: 50,
+      baseCost: 6500, // ~6x
+      boost: 75, // Grande salto de poder
       icon: "fa-flask",
-      type: "click",
+      type: ItemType.UPGRADE,
     },
     suit: {
-      id: "suit",
-      name: "Traje de Nanotech",
-      baseCost: 10000,
+      name: "Traje Tecnológico",
       count: 0,
-      boost: 200,
+      baseCost: 45000,
+      boost: 350,
       icon: "fa-user-astronaut",
-      type: "click",
+      type: ItemType.UPGRADE,
+    },
+    cosmic: {
+      name: "Poder Cósmico",
+      count: 0,
+      baseCost: 350000,
+      boost: 2000,
+      icon: "fa-meteor",
+      type: ItemType.UPGRADE,
     },
   },
 
   heroes: {
     kid: {
-      id: "kid",
       name: "Ajudante Mirim",
-      baseCost: 50,
       count: 0,
-      dps: 2,
+      baseCost: 50, // Acessível nos primeiros 2 minutos
+      dps: 2, // Ajuda, mas não carrega o jogo
       icon: "fa-user-ninja",
-      color: "text-red-600",
+      color: "text-yellow-500",
+      type: ItemType.HERO,
     },
     vigilante: {
-      id: "vigilante",
       name: "Vigilante Noturno",
-      baseCost: 300,
       count: 0,
-      dps: 10,
+      baseCost: 450, // ~9x o custo
+      dps: 12, // Melhor custo-benefício inicial
       icon: "fa-user-secret",
       color: "text-gray-800",
+      type: ItemType.HERO,
     },
     speedster: {
-      id: "speedster",
       name: "Velocista",
-      baseCost: 1500,
       count: 0,
-      dps: 40,
+      baseCost: 2200,
+      dps: 55, // Começa a ficar rápido
       icon: "fa-bolt",
-      color: "text-yellow-500",
+      color: "text-red-500",
+      type: ItemType.HERO,
     },
     amazon: {
-      id: "amazon",
-      name: "Guerreira Amazona",
-      baseCost: 8000,
+      name: "Guerreira",
       count: 0,
-      dps: 150,
+      baseCost: 12000,
+      dps: 250,
       icon: "fa-shield-alt",
-      color: "text-red-500",
+      color: "text-yellow-600",
+      type: ItemType.HERO,
     },
     alien: {
-      id: "alien",
-      name: "Último Filho",
-      baseCost: 50000,
+      name: "Caçador Alien",
       count: 0,
-      dps: 500,
+      baseCost: 85000,
+      dps: 1200, // Power Spike para chefes difíceis
       icon: "fa-rocket",
-      color: "text-blue-600",
+      color: "text-green-400",
+      type: ItemType.HERO,
+    },
+    wizard: {
+      name: "Mago Supremo",
+      count: 0,
+      baseCost: 600000,
+      dps: 7500,
+      icon: "fa-hat-wizard",
+      color: "text-purple-500",
+      type: ItemType.HERO,
     },
   },
 
   artifacts: {
     [ArtifactType.AMULET]: {
-      id: ArtifactType.AMULET,
-      name: "Amuleto da Sorte",
-      desc: "+10% Ouro",
+      name: "Amuleto Antigo",
+      desc: "+10% Ouro dos Vilões",
       owned: false,
       icon: "fa-gem",
       color: "text-green-400",
     },
     [ArtifactType.RING]: {
-      id: ArtifactType.RING,
       name: "Anel do Poder",
-      desc: "+20% Dano Clique",
+      desc: "+20% Dano de Clique",
       owned: false,
       icon: "fa-ring",
       color: "text-yellow-400",
     },
     [ArtifactType.CAPE]: {
-      id: ArtifactType.CAPE,
-      name: "Capa Sombria",
-      desc: "+20% DPS",
+      name: "Capa Heróica",
+      desc: "+20% DPS Geral",
       owned: false,
       icon: "fa-mask",
       color: "text-gray-800",
@@ -195,70 +225,71 @@ export const gameData = {
     [SkillType.FURY]: {
       active: false,
       cooldown: 0,
-      maxCooldown: 30,
-      duration: 5,
-      effect: "dps_x2",
+      maxCooldown: 30000,
+      duration: 5000,
     },
     [SkillType.CRIT]: {
       active: false,
       cooldown: 0,
-      maxCooldown: 45,
-      duration: 10,
-      effect: "crit_chance",
+      maxCooldown: 45000,
+      duration: 10000,
     },
     [SkillType.TEAM]: {
       active: false,
       cooldown: 0,
-      maxCooldown: 60,
-      duration: 10,
-      effect: "all_dmg_x2",
+      maxCooldown: 60000,
+      duration: 10000,
     },
   },
 };
 
 export const villains = [
-  { name: "Punguista", icon: "fa-mask", color: "text-gray-500" },
-  { name: "Capanga", icon: "fa-user-ninja", color: "text-blue-800" },
-  { name: "Palhaço Louco", icon: "fa-smile", color: "text-red-600" },
-  { name: "Mutante", icon: "fa-frog", color: "text-green-600" },
-  { name: "Ciborgue", icon: "fa-robot", color: "text-gray-400" },
-  { name: "Simbionte", icon: "fa-spider", color: "text-black" },
+  { name: "Capanga", hp: 10, color: "text-gray-500", icon: "fa-user-ninja" },
+  { name: "Palhaço", hp: 25, color: "text-red-500", icon: "fa-smile-wink" },
+  { name: "Mutante", hp: 60, color: "text-green-600", icon: "fa-biohazard" },
+  { name: "Ciborgue", hp: 150, color: "text-blue-500", icon: "fa-robot" },
+  { name: "Sombra", hp: 400, color: "text-purple-600", icon: "fa-ghost" },
+];
+
+export const bosses = [
+  {
+    name: "Rei do Crime",
+    hp: 2000,
+    color: "text-yellow-600",
+    icon: "fa-crown",
+  },
+  { name: "Titã Louco", hp: 50000, color: "text-purple-800", icon: "fa-gem" },
+  { name: "Devorador", hp: 1000000, color: "text-red-900", icon: "fa-skull" },
 ];
 
 export const specialVillains = [
   {
-    name: "Ladrão Veloz",
-    icon: "fa-running",
-    color: "text-purple-600",
-    type: VillainType.ELUSIVE,
-    spawnChance: 0.1,
-    effect: "Tem 30% de chance de escapar do dano",
-  },
-  {
-    name: "Necromante",
-    icon: "fa-skull",
-    color: "text-green-800",
-    type: VillainType.HEALER,
-    spawnChance: 0.08,
-    effect: "Regenera 1% de vida a cada 2 segundos",
-  },
-  {
-    name: "Golem de Pedra",
-    icon: "fa-mountain",
-    color: "text-gray-600",
+    name: "Tanque Blindado",
     type: VillainType.TANK,
-    spawnChance: 0.05,
-    effect: "Tem 50% mais vida que vilões normais",
+    hpMod: 3.0,
+    icon: "fa-mountain",
+    effect: "Alta resistência",
+    color: "text-gray-700",
+  },
+  {
+    name: "Corredor Sombrio",
+    type: VillainType.ELUSIVE,
+    hpMod: 0.8,
+    icon: "fa-running",
+    effect: "Chance de Esquiva (30%)",
+    color: "text-blue-400",
+  },
+  {
+    name: "Regenerador",
+    type: VillainType.HEALER,
+    hpMod: 1.2,
+    icon: "fa-heartbeat",
+    effect: "Regenera vida",
+    color: "text-green-500",
   },
 ];
 
-export const bosses = [
-  "Rei do Crime",
-  "Conquistador",
-  "Titã Louco",
-  "Devorador de Mundos",
-];
-
+// === ESSA É A PARTE QUE ESTAVA FALTANDO E CAUSOU O ERRO ===
 export const dailyMissions = [
   {
     id: "kill_20",

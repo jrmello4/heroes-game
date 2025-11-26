@@ -2,8 +2,6 @@ import { gameData } from "../core/GameData.js";
 import { MissionSys } from "../systems/MissionSys.js";
 import { SkillType } from "../core/Constants.js";
 
-// ... (Funções auxiliares de missão permanecem iguais, focando no Renderer principal)
-
 function createMissionElement(mission) {
   const div = document.createElement("div");
   div.id = `mission-${mission.id}`;
@@ -97,12 +95,12 @@ export const Renderer = {
     lastLevel: -1,
     lastHP: -1,
     lastHPText: "",
+    lastColorClass: "",
   },
 
   els: {},
 
   init() {
-    // Tenta pegar os elementos. Se falhar, tenta pegar novamente durante os updates
     this.refreshElements();
   },
 
@@ -137,9 +135,18 @@ export const Renderer = {
 
   formatNumber(num) {
     if (num === undefined || num === null || isNaN(num)) return "0";
-    if (num >= 1e6) return (num / 1e6).toFixed(2) + "M";
-    if (num >= 1e3) return (num / 1e3).toFixed(1) + "k";
-    return Math.floor(num);
+    if (num < 1000) return Math.floor(num);
+
+    const suffixes = ["", "k", "M", "B", "T", "aa", "ab", "ac", "ad", "ae"];
+    const tier = (Math.log10(num) / 3) | 0;
+
+    if (tier === 0) return Math.floor(num);
+
+    const suffix = suffixes[tier] || "e" + tier;
+    const scale = Math.pow(10, tier * 3);
+    const scaled = num / scale;
+
+    return scaled.toFixed(1) + suffix;
   },
 
   updateStats(dps) {
@@ -168,11 +175,14 @@ export const Renderer = {
     }
 
     const pGain = Math.floor(gameData.totalScoreRun / 1000000);
-    if (this.els.prestigeGain) this.els.prestigeGain.innerText = pGain;
+    if (this.els.prestigeGain)
+      this.els.prestigeGain.innerText = this.formatNumber(pGain);
 
     if (gameData.crystals > 0 && this.els.prestigeCount) {
       this.els.prestigeCount.classList.remove("hidden");
-      this.els.prestigeCount.innerHTML = `<i class="fas fa-gem"></i> ${gameData.crystals}`;
+      this.els.prestigeCount.innerHTML = `<i class="fas fa-gem"></i> ${this.formatNumber(
+        gameData.crystals
+      )}`;
     }
   },
 
@@ -180,22 +190,28 @@ export const Renderer = {
     if (!this.els.hpBar) this.refreshElements();
     if (!this.els.hpBar) return;
 
-    // Proteção contra dados inválidos
     const max = gameData.villainMaxHp || 20;
     const current = Math.max(0, gameData.villainCurrentHp);
-
     const pct = (current / max) * 100;
 
-    // CORREÇÃO: Removemos a checagem de 0.5% para garantir que a barra sempre mova
-    if (Math.abs(pct - this.state.lastHP) > 0.01 || pct === 0 || pct === 100) {
+    if (Math.abs(pct - this.state.lastHP) > 0.1 || pct === 0 || pct === 100) {
       this.els.hpBar.style.width = `${pct}%`;
+
+      let colorClass = "from-green-500 to-green-400";
+      if (pct < 25) colorClass = "from-red-600 to-red-400";
+      else if (pct < 50) colorClass = "from-yellow-400 to-orange-500";
+
+      if (this.state.lastColorClass !== colorClass) {
+        this.els.hpBar.className = `h-full bg-gradient-to-r transition-all duration-100 ease-linear ${colorClass}`;
+        this.state.lastColorClass = colorClass;
+      }
+
       this.state.lastHP = pct;
     }
 
     const newHPText = `${this.formatNumber(
       Math.ceil(current)
     )} / ${this.formatNumber(max)}`;
-
     if (newHPText !== this.state.lastHPText) {
       if (this.els.hpText) this.els.hpText.innerText = newHPText;
       this.state.lastHPText = newHPText;
@@ -218,18 +234,21 @@ export const Renderer = {
   updateVillainSprite(v, isBoss) {
     if (!this.els.villainName) this.refreshElements();
 
+    // CORREÇÃO AQUI: Acessa v.name se for boss
     this.els.villainName.innerText = isBoss
-      ? v
+      ? v.name
       : `Nvl ${gameData.level} ${v.name}`;
 
     if (this.els.villainIcon) {
       this.els.villainIcon.className = isBoss
-        ? "fas fa-dragon"
+        ? `fas ${v.icon}`
         : `fas ${v.icon}`;
     }
 
     const newClass = isBoss
-      ? "text-[9rem] md:text-[11rem] transition-transform filter drop-shadow-2xl text-red-600 relative"
+      ? `text-[9rem] md:text-[11rem] transition-transform filter drop-shadow-2xl ${
+          v.color || "text-red-600"
+        } relative`
       : `text-[8rem] md:text-[10rem] transition-transform filter drop-shadow-2xl ${v.color} relative`;
 
     if (
@@ -242,7 +261,6 @@ export const Renderer = {
 
   showSpecialVillainIndicator(villain) {
     let indicator = document.getElementById("specialVillainIndicator");
-
     if (!indicator && this.els.gameZone) {
       indicator = document.createElement("div");
       indicator.id = "specialVillainIndicator";
@@ -250,33 +268,27 @@ export const Renderer = {
         "absolute top-20 left-1/2 transform -translate-x-1/2 z-30";
       this.els.gameZone.appendChild(indicator);
     }
-
     if (indicator) {
       indicator.innerHTML = `
             <div class="comic-box bg-purple-600 text-white px-4 py-2 border-3 border-yellow-400 animate-pulse">
             <div class="flex items-center gap-2">
                 <i class="fas fa-star text-yellow-400"></i>
                 <span class="font-comic text-sm">⭐ ${villain.name} ⭐</span>
-                <i class="fas fa-star text-yellow-400"></i>
             </div>
             <div class="text-xs text-center mt-1 opacity-90">${villain.effect}</div>
-            </div>
-        `;
+            </div>`;
       indicator.classList.remove("hidden");
     }
   },
 
   hideSpecialVillainIndicator() {
     const indicator = document.getElementById("specialVillainIndicator");
-    if (indicator) {
-      indicator.classList.add("hidden");
-    }
+    if (indicator) indicator.classList.add("hidden");
   },
 
   animateHit() {
     if (!this.els.villainSprite) return;
     this.els.villainSprite.classList.remove("villain-hit");
-    // Força reflow para reiniciar animação
     void this.els.villainSprite.offsetWidth;
     this.els.villainSprite.classList.add("villain-hit");
   },
@@ -335,32 +347,23 @@ export const Renderer = {
     if (!this.els.missionsContainer) return;
 
     const missions = MissionSys.currentMissions;
-
     if (missions.length === 0) {
       if (
         this.els.missionsContainer.innerHTML.indexOf("Novas missões") === -1
       ) {
-        this.els.missionsContainer.innerHTML = `
-            <div class="comic-box p-4 text-center bg-yellow-50">
-              <i class="fas fa-tasks text-2xl text-gray-400 mb-2"></i>
-              <p class="text-sm text-gray-600">Novas missões em breve!</p>
-            </div>
-          `;
+        this.els.missionsContainer.innerHTML = `<div class="comic-box p-4 text-center bg-yellow-50"><i class="fas fa-tasks text-2xl text-gray-400 mb-2"></i><p class="text-sm text-gray-600">Novas missões em breve!</p></div>`;
       }
       return;
     }
 
     if (!document.getElementById("missionsList")) {
       this.els.missionsContainer.innerHTML = `
-        <div class="flex justify-between items-center mb-3">
-          <h3 class="font-comic text-lg text-purple-600">Missões Diárias</h3>
-          <div id="missionsCountBadge" class="text-xs bg-purple-100 px-2 py-1 rounded font-bold">
-            0/0
-          </div>
-        </div>
-        <div id="missionsList"></div>
-        <div id="allMissionsReward" class="hidden"></div>
-      `;
+            <div class="flex justify-between items-center mb-3">
+            <h3 class="font-comic text-lg text-purple-600">Missões Diárias</h3>
+            <div id="missionsCountBadge" class="text-xs bg-purple-100 px-2 py-1 rounded font-bold">0/0</div>
+            </div>
+            <div id="missionsList"></div>
+            <div id="allMissionsReward" class="hidden"></div>`;
     }
 
     const completedCount = MissionSys.getCompletedMissionsCount();
@@ -372,7 +375,6 @@ export const Renderer = {
       const progressData = MissionSys.getMissionProgress(mission.id);
       const progress = progressData ? progressData.progress : 0;
       const target = progressData ? progressData.target : mission.target;
-
       updateMissionDOM(mission, progress, target);
     });
 
@@ -385,19 +387,11 @@ export const Renderer = {
         if (rewardContainer.classList.contains("hidden")) {
           rewardContainer.classList.remove("hidden");
           rewardContainer.innerHTML = `
-                    <div class="comic-box p-3 bg-gradient-to-r from-yellow-400 to-orange-400 border-3 border-yellow-600 text-center mt-2">
-                    <div class="flex items-center justify-center gap-2 mb-2">
-                        <i class="fas fa-trophy text-yellow-800"></i>
-                        <h4 class="font-comic text-lg text-yellow-800">Missão Concluída!</h4>
-                        <i class="fas fa-trophy text-yellow-800"></i>
-                    </div>
-                    <p class="text-sm text-yellow-900 mb-2">Você completou todas as missões diárias!</p>
-                    <button data-action="claim-all-missions"
-                            class="comic-btn bg-yellow-600 text-white w-full py-2 text-sm hover:bg-yellow-700">
-                        <i class="fas fa-gem mr-1"></i> Reivindicar Bônus +5 Cristais
-                    </button>
-                    </div>
-                `;
+                        <div class="comic-box p-3 bg-gradient-to-r from-yellow-400 to-orange-400 border-3 border-yellow-600 text-center mt-2">
+                        <div class="flex items-center justify-center gap-2 mb-2"><i class="fas fa-trophy text-yellow-800"></i><h4 class="font-comic text-lg text-yellow-800">Missão Concluída!</h4></div>
+                        <p class="text-sm text-yellow-900 mb-2">Você completou todas as missões diárias!</p>
+                        <button data-action="claim-all-missions" class="comic-btn bg-yellow-600 text-white w-full py-2 text-sm hover:bg-yellow-700"><i class="fas fa-gem mr-1"></i> Reivindicar Bônus +5 Cristais</button>
+                        </div>`;
         }
       } else {
         rewardContainer.classList.add("hidden");

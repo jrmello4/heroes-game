@@ -488,3 +488,47 @@
     filter: drop-shadow(0 0 20px var(--superman-yellow));
   }
 }
+
+/* === CORREÇÃO PARA INDICADOR DE VILÃO ESPECIAL === */
+#specialVillainIndicator {
+  animation: specialIndicatorSlide 0.5s ease-out;
+}
+
+@keyframes specialIndicatorSlide {
+  from {
+    transform: translateX(-50%) translateY(-100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Estilo específico para o indicador de vilão especial */
+#specialVillainIndicator .comic-box {
+  background: linear-gradient(135deg, #fef08a 0%, #facc15 100%) !important;
+  border: 4px solid #dc2626 !important;
+  box-shadow: 0 0 30px rgba(251, 191, 36, 0.8), 0 6px 0 #dc2626 !important;
+  color: #7c2d12 !important;
+  min-width: 300px;
+}
+
+/* Remove qualquer fundo branco excessivo de comic-box genéricos */
+.comic-box {
+  background: linear-gradient(
+    135deg,
+    var(--superman-white) 0%,
+    var(--superman-light-gray) 100%
+  ) !important;
+}
+
+/* Garante que o crit-flash não interfira */
+.crit-flash {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transition: opacity 0.05s !important;
+}
+
+.crit-flash.active {
+  opacity: 0.3 !important;
+}

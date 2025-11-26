@@ -32,6 +32,7 @@ let lastSaveTime = 0;
 let lastWeakPointTime = 0;
 let lastAchievementCheckTime = 0;
 let lastSpecialVillainCheck = 0;
+
 const RENDER_INTERVAL = 1000 / 30;
 const SAVE_INTERVAL = 30000;
 const WEAK_POINT_INTERVAL = 4000;
@@ -60,8 +61,11 @@ function init() {
   // Contexto seguro para o SaveSys
   const loadSuccess = ErrorHandler.safeExecute(() => SaveSys.load(), false)();
 
-  // Inicializa o cache de conquistas
-  updateAchievementBonusCache();
+  // INICIALIZAÇÃO DE MILESTONES: Salva os atributos base para cálculos
+  initBaseStats();
+
+  // Recalcula todos os status com base nos milestones atuais
+  recalculateGlobalStats();
 
   if (
     Number.isNaN(gameData.villainCurrentHp) ||
@@ -70,8 +74,8 @@ function init() {
     console.warn(
       "Dados de HP corrompidos detectados. Resetando status do vilão."
     );
-    gameData.villainCurrentHp = 20;
-    gameData.villainMaxHp = 20;
+    gameData.villainCurrentHp = 15;
+    gameData.villainMaxHp = 15;
     gameData.level = 1;
   }
 
@@ -80,6 +84,9 @@ function init() {
   }
 
   MissionSys.init();
+
+  // Atualiza cache de conquistas
+  updateAchievementBonusCache();
 
   ErrorHandler.safeExecute(() => {
     const offlineData = SaveSys.checkOfflineProgress(calculateDPS);
@@ -117,6 +124,76 @@ function init() {
 
   ErrorHandler.showSuccess("Jogo pronto!");
 }
+
+// === NOVO SISTEMA DE MILESTONES ===
+function initBaseStats() {
+  // Salva o DPS/Boost original como "base" se ainda não existir
+  // Isso previne que o multiplicador seja aplicado recursivamente ao salvar/carregar
+  for (let k in gameData.heroes) {
+    const h = gameData.heroes[k];
+    if (!h.baseDps) h.baseDps = h.dps;
+  }
+  for (let k in gameData.upgrades) {
+    const u = gameData.upgrades[k];
+    if (!u.baseBoost) u.baseBoost = u.boost;
+  }
+}
+
+function recalculateGlobalStats() {
+  // Reseta status globais
+  gameData.autoDamage = 0;
+  let totalBaseClick = 1; // Dano base inicial
+
+  // Recalcula Heróis (DPS)
+  for (let k in gameData.heroes) {
+    const h = gameData.heroes[k];
+    // FÓRMULA DE MILESTONE: Multiplicador 4x a cada 25 níveis
+    const milestones = Math.floor(h.count / 25);
+    const multiplier = Math.pow(4, milestones);
+
+    // Atualiza o DPS atual do herói (visual e efetivo)
+    h.dps = h.baseDps * multiplier;
+
+    // Soma ao total
+    gameData.autoDamage += h.dps * h.count;
+  }
+
+  // Recalcula Upgrades (Click)
+  for (let k in gameData.upgrades) {
+    const u = gameData.upgrades[k];
+    const milestones = Math.floor(u.count / 25);
+    const multiplier = Math.pow(4, milestones);
+
+    u.boost = u.baseBoost * multiplier;
+
+    totalBaseClick += u.boost * u.count;
+  }
+
+  gameData.clickDamage = totalBaseClick;
+}
+
+function checkMilestone(item, prevCount) {
+  // Verifica se cruzou um múltiplo de 25
+  if (Math.floor(item.count / 25) > Math.floor(prevCount / 25)) {
+    const newMult = Math.pow(4, Math.floor(item.count / 25));
+
+    // Feedback Visual (Juice!)
+    ErrorHandler.showSuccess(
+      `🚀 ${item.name}: MILESTONE! Dano x4! (Total: x${newMult})`
+    );
+    AudioSys.playLevelUp(); // Som de conquista
+
+    // Partículas no centro da tela
+    ParticleSys.spawnFloatingText(
+      window.innerWidth / 2,
+      window.innerHeight / 2 - 100,
+      "POWER UP! x4",
+      "text-yellow-400",
+      30
+    );
+  }
+}
+// ==================================
 
 function updateAchievementBonusCache() {
   achievementBonusCache = getAchievementBonus();
@@ -287,7 +364,6 @@ function render() {
 function calculateDPS() {
   try {
     let dps = gameData.autoDamage;
-    // OTIMIZAÇÃO: Usa o cache
     let mult = 1 + gameData.crystals * 0.1 + achievementBonusCache;
     if (gameData.artifacts[ArtifactType.CAPE].owned) mult += 0.2;
     if (gameData.skills[SkillType.FURY].active) mult *= 2;
@@ -311,7 +387,6 @@ function getAchievementBonus() {
   }
 }
 
-// *** AQUI ESTAVA O ERRO PRINCIPAL CORRIGIDO ***
 async function handleInput(x, y, forcedCrit = false) {
   return await ErrorHandler.safeExecuteAsync(
     async () => {
@@ -342,7 +417,7 @@ async function handleInput(x, y, forcedCrit = false) {
       return result;
     },
     { isCrit: false, showCombo: false }
-  ); // <--- REMOVIDO O "()" EXTRA QUE TINHA AQUI
+  );
 }
 
 function damageVillain(amt) {
@@ -380,7 +455,20 @@ function defeatVillain() {
   try {
     gameData.villainsDefeated++;
 
-    let reward = Math.floor(gameData.villainMaxHp / 2.5);
+    let reward = Math.ceil(gameData.villainMaxHp / 4);
+
+    // Lucky Drop (10% chance de 3x Gold)
+    if (Math.random() < 0.1) {
+      reward *= 3;
+      ParticleSys.spawnFloatingText(
+        window.innerWidth / 2,
+        window.innerHeight / 2 - 50,
+        "OURO EXTRA!",
+        "text-yellow-300",
+        20
+      );
+    }
+
     if (gameData.artifacts[ArtifactType.AMULET].owned) reward *= 1.1;
 
     if (currentVillain?.special) {
@@ -408,6 +496,7 @@ function defeatVillain() {
         const key = available[Math.floor(Math.random() * available.length)];
         gameData.artifacts[key].owned = true;
         Shop.render();
+        ErrorHandler.showSuccess("💎 Artefato Encontrado!");
       }
     }
 
@@ -469,10 +558,12 @@ function spawnVillain() {
       gameData.villainMaxHp = currentVillain.baseHP;
     }
 
-    const growth = 1.4;
+    const growth = 1.23;
     const lvl = Math.max(1, gameData.level || 1);
 
-    gameData.villainMaxHp = Math.floor(20 * Math.pow(growth, lvl - 1));
+    gameData.villainMaxHp = Math.floor(
+      15 * Math.pow(growth, lvl - 1) + lvl * 2
+    );
 
     if (!isFinite(gameData.villainMaxHp) || isNaN(gameData.villainMaxHp)) {
       gameData.villainMaxHp = 20;
@@ -572,15 +663,21 @@ function buy(type, key) {
   try {
     const item =
       type === ItemType.HERO ? gameData.heroes[key] : gameData.upgrades[key];
-    let cost = Math.floor(item.baseCost * Math.pow(1.2, item.count));
+
+    let cost = Math.floor(item.baseCost * Math.pow(1.15, item.count));
 
     if (gameData.score >= cost) {
       AudioSys.playBuy();
       gameData.score -= cost;
+
+      const prevCount = item.count;
       item.count++;
 
-      if (type === ItemType.HERO) gameData.autoDamage += item.dps;
-      else gameData.clickDamage += item.boost;
+      // Verifica se atingiu um Milestone (ex: 24 -> 25)
+      checkMilestone(item, prevCount);
+
+      // Recalcula tudo (simples e seguro)
+      recalculateGlobalStats();
 
       Shop.render();
     }
