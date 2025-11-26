@@ -32,6 +32,7 @@ let lastSaveTime = 0;
 let lastWeakPointTime = 0;
 let lastAchievementCheckTime = 0;
 let lastSpecialVillainCheck = 0;
+let lastComboDecayTime = 0;
 
 let lastDroneSpawn = Date.now();
 let nextDroneInterval = 60000 + Math.random() * 120000;
@@ -41,6 +42,7 @@ const SAVE_INTERVAL = 30000;
 const WEAK_POINT_INTERVAL = 4000;
 const ACHIEVEMENT_CHECK_INTERVAL = 1000;
 const SPECIAL_VILLAIN_CHECK = 5000;
+const COMBO_DECAY_INTERVAL = 100;
 
 let achievementBonusCache = 0;
 
@@ -125,7 +127,6 @@ function initBaseStats() {
   for (let k in gameData.heroes) {
     const h = gameData.heroes[k];
     if (!h.baseDps) h.baseDps = h.dps;
-    // Garante que o rank existe (caso venha de save antigo)
     if (h.rank === undefined) h.rank = 0;
   }
   for (let k in gameData.upgrades) {
@@ -151,11 +152,9 @@ function recalculateGlobalStats() {
   for (let k in gameData.heroes) {
     const h = gameData.heroes[k];
 
-    // 1. Milestone Multiplier (x4 a cada 25)
     const milestones = Math.floor(h.count / 25);
     let multiplier = Math.pow(4, milestones);
 
-    // 2. Synergy Multiplier
     if (h.tags) {
       h.tags.forEach((tag) => {
         if (tagMultipliers[tag]) {
@@ -164,8 +163,6 @@ function recalculateGlobalStats() {
       });
     }
 
-    // 3. RANK MULTIPLIER (ASCENSÃO): x20 POR RANK
-    // Isso faz com que rank 1 seja 20x mais forte, rank 2 seja 400x...
     const rankMult = Math.pow(20, h.rank || 0);
     multiplier *= rankMult;
 
@@ -212,11 +209,10 @@ function ascend(type, key) {
     if (type !== ItemType.HERO) return;
     const hero = gameData.heroes[key];
 
-    if (hero.count < 50) return; // Segurança
+    if (hero.count < 50) return;
 
-    // EFEITOS
     hero.rank = (hero.rank || 0) + 1;
-    hero.count = 0; // Reseta nível
+    hero.count = 0;
 
     AudioSys.playLevelUp();
 
@@ -234,7 +230,97 @@ function ascend(type, key) {
     console.warn("Erro ao ascender:", error);
   }
 }
-// ==========================
+
+// === NOVO: ATUALIZAÇÃO DO SISTEMA DE COMBOS ===
+function updateComboSystem(dt) {
+  const comboSystem = gameData.comboSystem;
+
+  if (comboSystem.streakTimer > 0) {
+    comboSystem.streakTimer -= dt;
+
+    if (comboSystem.streakTimer <= 0) {
+      comboSystem.currentMultiplier = Math.max(
+        1,
+        comboSystem.currentMultiplier - comboSystem.decayRate
+      );
+      comboSystem.streakTimer = comboSystem.streakDuration;
+
+      if (comboSystem.currentMultiplier <= 1) {
+        comboSystem.currentMultiplier = 1;
+        comboSystem.streakTimer = 0;
+      }
+    }
+  }
+}
+
+// === NOVO: VERIFICAÇÃO DE METAS DE SESSÃO ===
+function checkSessionMilestones() {
+  const milestones = gameData.sessionMilestones;
+  const progress = gameData.sessionProgress;
+
+  // Verificar metas de cliques
+  milestones.clicks.forEach((threshold, index) => {
+    if (gameData.totalClicks >= threshold && !progress.clicks[index]) {
+      progress.clicks[index] = true;
+      const reward = threshold * 2;
+      gameData.score += reward;
+
+      ParticleSys.spawnFloatingText(
+        window.innerWidth / 2,
+        window.innerHeight / 2 - 100,
+        `META ALCANÇADA!\n${threshold} Cliques\n+${Renderer.formatNumber(
+          reward
+        )} Ouro`,
+        "text-green-400 text-center font-bold stroke-black stroke-2",
+        1.5
+      );
+      AudioSys.playBuy();
+    }
+  });
+
+  // Verificar metas de vilões
+  milestones.villains.forEach((threshold, index) => {
+    if (gameData.villainsDefeated >= threshold && !progress.villains[index]) {
+      progress.villains[index] = true;
+      const reward = threshold * 10;
+      gameData.score += reward;
+
+      ParticleSys.spawnFloatingText(
+        window.innerWidth / 2,
+        window.innerHeight / 2 - 100,
+        `META ALCANÇADA!\n${threshold} Vilões\n+${Renderer.formatNumber(
+          reward
+        )} Ouro`,
+        "text-blue-400 text-center font-bold stroke-black stroke-2",
+        1.5
+      );
+      AudioSys.playBuy();
+    }
+  });
+
+  // Verificar metas de combo
+  milestones.combos.forEach((threshold, index) => {
+    if (
+      gameData.comboSystem.currentMultiplier >= threshold &&
+      !progress.combos[index]
+    ) {
+      progress.combos[index] = true;
+      const reward = threshold * 500;
+      gameData.score += reward;
+
+      ParticleSys.spawnFloatingText(
+        window.innerWidth / 2,
+        window.innerHeight / 2 - 150,
+        `COMBO RECORDE!\n${threshold.toFixed(
+          1
+        )}x Multiplicador\n+${Renderer.formatNumber(reward)} Ouro`,
+        "text-purple-400 text-center font-bold stroke-black stroke-2",
+        2.0
+      );
+      AudioSys.playLevelUp();
+    }
+  });
+}
 
 function updateAchievementBonusCache() {
   achievementBonusCache = getAchievementBonus();
@@ -276,6 +362,12 @@ function update(dt) {
   const currentDps = ErrorHandler.safeExecute(calculateDPS, 0)();
   if (currentDps > 0) {
     ErrorHandler.safeExecute(damageVillain)(currentDps * dt);
+  }
+
+  // === ATUALIZAÇÃO DO SISTEMA DE COMBOS ===
+  if (currentTime - lastComboDecayTime > COMBO_DECAY_INTERVAL) {
+    updateComboSystem(dt);
+    lastComboDecayTime = currentTime;
   }
 
   if (
@@ -485,11 +577,18 @@ async function handleInput(x, y, forcedCrit = false) {
         damageVillain
       );
 
-      if (result && result.showCombo) Renderer.updateCombo(gameData.combo);
+      if (result && result.showCombo)
+        Renderer.updateCombo(
+          gameData.combo,
+          gameData.comboSystem.currentMultiplier
+        );
       Renderer.animateHit();
 
       MissionSys.updateProgress(MissionType.CLICK);
       Renderer.updateVillainHealth();
+
+      // === VERIFICAR METAS DE SESSÃO APÓS CLIQUE ===
+      checkSessionMilestones();
 
       return result;
     },
@@ -590,6 +689,9 @@ function defeatVillain() {
     currentVillain = null;
     spawnVillain();
     Shop.render();
+
+    // === VERIFICAR METAS DE SESSÃO APÓS DERROTAR VILÃO ===
+    checkSessionMilestones();
   } catch (error) {
     console.warn("Erro no defeatVillain:", error);
     isBoss = false;
@@ -716,6 +818,12 @@ function checkAchievements() {
           conditionMet = true;
         if (a.type === AchievementType.LEVEL && gameData.level >= a.req)
           conditionMet = true;
+        // === NOVO: VERIFICAÇÃO DE CONQUISTAS DE COMBO ===
+        if (
+          a.type === "combo_multiplier" &&
+          gameData.comboSystem.currentMultiplier >= a.req
+        )
+          conditionMet = true;
 
         if (conditionMet) {
           a.done = true;
@@ -837,7 +945,6 @@ function setupEvents() {
       if (action === "buy") {
         buy(type, key);
       } else if (action === "ascend") {
-        // NOVO HANDLER
         ascend(type, key);
       } else if (action === "claim-mission") {
         claimMissionReward(id);

@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>Herói Clicker: UI Fix Final</title>
+    <title>DC HEROES CLICKER - Edição Especial</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -17,100 +17,104 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./css/style.css" />
-    <link rel="stylesheet" href="./css/superman-theme.css" />
   </head>
-  <body
-    class="superman-theme flex flex-col md:flex-row h-screen overflow-hidden"
-  >
+  <body class="comic-bg flex flex-col md:flex-row h-screen overflow-hidden">
     <div id="critFlash" class="crit-flash"></div>
 
     <button
       id="btnGlobalSettings"
-      class="fixed bottom-4 left-4 z-[70] comic-btn bg-gray-800 text-white w-12 h-12 rounded-full flex items-center justify-center text-xl shadow-xl hover:bg-gray-700 border-2 border-white"
+      class="fixed bottom-6 right-6 z-[70] comic-btn w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-2xl hover:scale-110 transition-transform"
     >
       <i class="fas fa-cog"></i>
     </button>
 
     <div
       id="offlineModal"
-      class="fixed inset-0 bg-black/90 z-[90] hidden flex items-center justify-center px-4"
+      class="fixed inset-0 bg-black/90 z-[90] hidden flex items-center justify-center px-4 backdrop-blur-sm"
     >
-      <div class="comic-box p-6 max-w-md w-full bg-white text-center">
-        <h2 class="font-comic text-3xl text-blue-600 mb-2">RELATÓRIO</h2>
-        <div class="bg-gray-100 p-4 rounded border-2 border-black mb-4">
-          <p class="text-sm text-gray-500 uppercase font-bold">Tempo Offline</p>
-          <p id="offlineTime" class="font-comic text-xl">00:00:00</p>
-          <div class="h-px bg-gray-300 my-2"></div>
-          <p class="text-sm text-gray-500 uppercase font-bold">Ouro Coletado</p>
-          <p id="offlineGold" class="font-comic text-3xl text-yellow-500">0</p>
+      <div class="comic-box p-8 max-w-md w-full text-center hero-entrance">
+        <h2 class="dc-title text-4xl mb-4">RELATÓRIO DE MISSÃO</h2>
+        <div
+          class="comic-box p-6 mb-6 bg-gradient-to-br from-blue-500 to-purple-600 border-4 border-yellow-400"
+        >
+          <p class="text-sm text-yellow-200 uppercase font-bold tracking-wider">
+            Tempo Offline
+          </p>
+          <p id="offlineTime" class="hero-text text-2xl">00:00:00</p>
+          <div class="h-1 bg-yellow-400/50 my-4 rounded-full"></div>
+          <p class="text-sm text-yellow-200 uppercase font-bold tracking-wider">
+            Ouro Coletado
+          </p>
+          <p id="offlineGold" class="hero-text text-4xl text-yellow-300">0</p>
         </div>
         <button
           id="btnClaimOffline"
-          class="comic-btn bg-green-500 text-white w-full py-3 text-xl"
+          class="comic-btn bg-gradient-to-r from-green-500 to-blue-500 text-white w-full py-4 text-xl font-bold hover:from-green-600 hover:to-blue-600"
         >
-          RECEBER
+          <i class="fas fa-gem mr-2"></i> RECEBER RECOMPENSA
         </button>
       </div>
     </div>
 
     <div
-      class="md:w-1/4 w-full bg-white border-b-4 md:border-b-0 md:border-r-4 border-black flex flex-row md:flex-col p-2 z-30 shadow-xl relative shrink-0"
+      class="md:w-1/4 w-full bg-gradient-to-b from-blue-900/90 to-purple-900/90 border-b-4 md:border-b-0 md:border-r-4 border-yellow-400 flex flex-row md:flex-col p-3 z-30 shadow-2xl relative shrink-0"
     >
       <div
-        class="hidden md:block text-center mb-4 p-4 bg-gradient-to-r from-red-600 to-blue-600 border-4 border-yellow-400 transform -rotate-1"
+        class="hidden md:block text-center mb-6 p-6 comic-box bg-gradient-to-r from-red-600 via-blue-600 to-purple-600 border-4 border-yellow-400 transform -rotate-1 hero-entrance"
       >
-        <h1
-          class="font-comic text-4xl text-yellow-400 drop-shadow-[2px_2px_0_#000]"
-        >
-          HEROES CLICKER
-        </h1>
+        <h1 class="dc-title text-5xl mb-2">DC HEROES</h1>
+        <p class="text-yellow-300 text-sm font-bold tracking-widest">
+          CLICKER ÉPICO
+        </p>
       </div>
 
-      <div class="flex md:flex-col gap-2 w-full pr-12 md:pr-0">
+      <div class="flex md:flex-col gap-3 w-full pr-14 md:pr-0">
         <div
-          class="comic-box p-2 flex-1 flex flex-col justify-center bg-yellow-50 min-w-[100px]"
+          class="comic-box p-4 flex-1 flex flex-col justify-center bg-gradient-to-br from-yellow-400/20 to-red-500/20 min-w-[120px] hero-entrance"
         >
           <div
-            class="flex justify-between text-[10px] font-black text-gray-400 uppercase"
+            class="flex justify-between text-xs font-black text-yellow-200 uppercase tracking-wider"
           >
-            <span>Ouro</span>
-            <span id="prestigeCount" class="text-purple-600 hidden"
-              ><i class="fas fa-gem"></i> 0</span
-            >
+            <span><i class="fas fa-coins mr-1"></i> Ouro</span>
+            <span id="prestigeCount" class="text-purple-300 hidden">
+              <i class="fas fa-gem"></i> <span id="crystalCount">0</span>
+            </span>
           </div>
-          <div class="flex items-center gap-2">
-            <i class="fas fa-coins text-yellow-500 text-lg"></i>
-            <span
-              id="scoreDisplay"
-              class="font-comic text-2xl text-gray-800 leading-none"
+          <div class="flex items-center gap-3 mt-2">
+            <i class="fas fa-coins text-yellow-400 text-2xl"></i>
+            <span id="scoreDisplay" class="hero-text text-3xl leading-none"
               >0</span
             >
           </div>
         </div>
 
         <div
-          class="comic-box p-2 flex-1 flex flex-col justify-center bg-red-50 min-w-[100px]"
+          class="comic-box p-4 flex-1 flex flex-col justify-center bg-gradient-to-br from-red-500/20 to-blue-500/20 min-w-[120px] hero-entrance"
         >
-          <p class="text-[10px] font-black text-gray-400 uppercase">Dano/Seg</p>
-          <div class="flex items-center gap-2">
-            <i class="fas fa-meteor text-red-500 text-lg"></i>
-            <span
-              id="dpsDisplay"
-              class="font-comic text-2xl text-gray-800 leading-none"
+          <p
+            class="text-xs font-black text-yellow-200 uppercase tracking-wider"
+          >
+            Dano/Seg
+          </p>
+          <div class="flex items-center gap-3 mt-2">
+            <i class="fas fa-bolt text-red-400 text-2xl"></i>
+            <span id="dpsDisplay" class="hero-text text-3xl leading-none"
               >0</span
             >
           </div>
         </div>
       </div>
 
-      <div class="hidden md:flex flex-1 flex-col mt-4 gap-2 overflow-hidden">
+      <div class="hidden md:flex flex-1 flex-col mt-6 gap-3 overflow-hidden">
         <div
-          class="comic-box p-2 bg-purple-50 flex-1 overflow-y-auto custom-scroll"
+          class="comic-box p-4 bg-gradient-to-b from-purple-500/20 to-blue-600/20 flex-1 overflow-y-auto custom-scroll hero-entrance"
         >
           <div id="missionsContainer">
-            <div class="text-center text-gray-500 py-4">
-              <i class="fas fa-tasks text-2xl mb-2"></i>
-              <p class="text-sm">Carregando missões...</p>
+            <div class="text-center text-yellow-200 py-8">
+              <i class="fas fa-tasks text-4xl mb-4 text-yellow-400"></i>
+              <p class="text-lg font-bold tracking-wider">
+                PREPARANDO MISSÕES...
+              </p>
             </div>
           </div>
         </div>
@@ -125,27 +129,24 @@
       <canvas id="canvasOverlay"></canvas>
 
       <div
-        class="absolute top-6 w-full flex flex-col items-center z-50 pointer-events-none"
+        class="absolute top-8 w-full flex flex-col items-center z-50 pointer-events-none"
       >
-        <h2
-          id="villainName"
-          class="font-comic text-3xl text-white drop-shadow-[3px_3px_0_#000] stroke-black mb-1 tracking-wider"
-        >
+        <h2 id="villainName" class="dc-title text-4xl mb-3 tracking-widest">
           Vilão
         </h2>
 
-        <div class="relative w-72 flex flex-col items-center drop-shadow-xl">
+        <div class="relative w-80 flex flex-col items-center drop-shadow-2xl">
           <div
-            class="w-full h-8 bg-gray-900 border-4 border-black rounded-lg overflow-hidden relative z-20"
+            class="w-full h-10 bg-gray-900/80 border-4 border-yellow-400 rounded-xl overflow-hidden relative z-20 comic-box"
           >
             <div
               id="hpBar"
-              class="h-full bg-gradient-to-r from-red-600 to-red-400 transition-all duration-100 ease-linear"
+              class="health-bar h-full transition-all duration-100 ease-linear"
               style="width: 100%"
             ></div>
             <p
               id="hpText"
-              class="absolute inset-0 z-30 flex items-center justify-center text-sm font-black text-white drop-shadow-[1px_1px_0_#000] tracking-widest"
+              class="absolute inset-0 z-30 flex items-center justify-center text-base font-black text-white tracking-widest text-shadow"
             >
               20 / 20
             </p>
@@ -153,18 +154,18 @@
 
           <div
             id="bossTimerContainer"
-            class="w-[95%] h-4 bg-black border-x-4 border-b-4 border-black rounded-b-lg overflow-hidden relative z-10 hidden mt-[-2px]"
+            class="w-[95%] h-5 bg-gradient-to-r from-red-600 to-yellow-600 border-x-4 border-b-4 border-yellow-400 rounded-b-xl overflow-hidden relative z-10 hidden mt-[-2px] comic-box"
           >
             <div
               id="bossTimerBar"
-              class="h-full bg-yellow-400 transition-all duration-100 linear"
+              class="health-bar h-full transition-all duration-100 linear"
               style="width: 100%"
             ></div>
           </div>
 
           <div
             id="bossTimerTextOverlay"
-            class="hidden absolute -right-12 top-2 font-comic text-white text-xl drop-shadow-[2px_2px_0_#000]"
+            class="hidden absolute -right-16 top-3 hero-text text-2xl"
           >
             <span id="bossTimerText">30s</span>
           </div>
@@ -173,11 +174,11 @@
 
       <div
         id="clickZone"
-        class="relative z-20 flex-1 w-full flex items-center justify-center cursor-pointer group select-none outline-none"
+        class="relative z-20 flex-1 w-full flex items-center justify-center cursor-crosshair group select-none outline-none"
       >
         <div
           id="villainSprite"
-          class="text-[8rem] md:text-[10rem] transition-transform filter drop-shadow-2xl text-white relative"
+          class="text-[10rem] md:text-[12rem] transition-transform filter drop-shadow-2xl text-white relative hero-entrance"
         >
           <i id="villainIcon" class="fas fa-mask"></i>
         </div>
@@ -185,98 +186,119 @@
 
       <div
         id="comboContainer"
-        class="absolute bottom-24 md:bottom-32 right-4 md:right-10 z-10 hidden transform rotate-6 transition-all"
+        class="absolute bottom-28 md:bottom-36 right-6 md:right-12 z-10 hidden transform rotate-6 transition-all combo-display"
       >
-        <h1
-          id="comboText"
-          class="font-comic text-5xl text-yellow-400 drop-shadow-[3px_3px_0_#000] animate-bounce"
-        >
+        <h1 id="comboText" class="dc-title text-6xl text-shadow animate-bounce">
           x1
         </h1>
       </div>
 
-      <div class="w-full max-w-md px-4 pb-4 grid grid-cols-3 gap-3 z-30">
+      <div
+        id="comboMultiplier"
+        class="fixed top-6 left-6 z-50 comic-box bg-gradient-to-r from-purple-600 to-red-600 text-white px-4 py-2 border-3 border-yellow-400 hidden"
+      >
+        <div class="flex items-center gap-3">
+          <i class="fas fa-bolt text-yellow-400 text-xl"></i>
+          <span class="font-bold text-lg tracking-wider"
+            >COMBO: <span id="comboMultValue">1.0</span>x</span
+          >
+        </div>
+      </div>
+
+      <div class="w-full max-w-md px-6 pb-6 grid grid-cols-3 gap-4 z-30">
         <button
           id="skill1"
-          class="comic-btn bg-orange-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50 relative"
+          class="comic-btn skill-fury h-16 rounded-xl flex flex-col items-center justify-center disabled:opacity-50 relative group"
         >
-          <i class="fas fa-fire text-xl mb-1"></i>
-          <span class="text-[10px] leading-none">FÚRIA</span>
+          <i
+            class="fas fa-fire text-2xl mb-1 group-hover:scale-110 transition-transform"
+          ></i>
+          <span class="text-xs font-bold tracking-wider">FÚRIA</span>
           <div
             id="cd-fury"
-            class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"
+            class="absolute bottom-0 left-0 w-full bg-black/40 h-0 transition-all rounded-b-lg"
           ></div>
         </button>
         <button
           id="skill2"
-          class="comic-btn bg-blue-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50 relative"
+          class="comic-btn skill-crit h-16 rounded-xl flex flex-col items-center justify-center disabled:opacity-50 relative group"
         >
-          <i class="fas fa-crosshairs text-xl mb-1"></i>
-          <span class="text-[10px] leading-none">MIRA</span>
+          <i
+            class="fas fa-crosshairs text-2xl mb-1 group-hover:scale-110 transition-transform"
+          ></i>
+          <span class="text-xs font-bold tracking-wider">MIRA CRÍTICA</span>
           <div
             id="cd-crit"
-            class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"
+            class="absolute bottom-0 left-0 w-full bg-black/40 h-0 transition-all rounded-b-lg"
           ></div>
         </button>
         <button
           id="skill3"
-          class="comic-btn bg-green-500 text-white h-14 rounded flex flex-col items-center justify-center disabled:opacity-50 relative"
+          class="comic-btn skill-team h-16 rounded-xl flex flex-col items-center justify-center disabled:opacity-50 relative group"
         >
-          <i class="fas fa-users text-xl mb-1"></i>
-          <span class="text-[10px] leading-none">LIGA</span>
+          <i
+            class="fas fa-users text-2xl mb-1 group-hover:scale-110 transition-transform"
+          ></i>
+          <span class="text-xs font-bold tracking-wider">LIGA DA JUSTIÇA</span>
           <div
             id="cd-team"
-            class="absolute bottom-0 left-0 w-full bg-black/50 h-0 transition-all"
+            class="absolute bottom-0 left-0 w-full bg-black/40 h-0 transition-all rounded-b-lg"
           ></div>
         </button>
       </div>
     </div>
 
     <div
-      class="w-full md:w-1/4 h-flex-1 md:h-full bg-gray-100 border-l-0 md:border-l-4 border-black flex flex-col z-30 shadow-xl shrink-0"
+      class="w-full md:w-1/4 h-flex-1 md:h-full bg-gradient-to-b from-gray-900/95 to-blue-900/95 border-l-0 md:border-l-4 border-yellow-400 flex flex-col z-30 shadow-2xl shrink-0"
     >
-      <div class="flex border-b-4 border-black bg-white overflow-x-auto">
+      <div
+        class="flex border-b-4 border-yellow-400 bg-gradient-to-r from-red-600/80 to-blue-600/80 overflow-x-auto"
+      >
         <button
           id="tabUpgrades"
-          class="flex-1 py-3 font-comic text-xl bg-yellow-300 border-r-2 border-black relative top-[2px]"
+          class="flex-1 py-4 font-bold text-lg bg-yellow-400 border-r-2 border-yellow-600 relative top-[2px] transition-all hover:bg-yellow-300"
         >
           <i class="fas fa-dumbbell"></i>
+          <span class="hidden md:inline ml-2 text-sm">MELHORIAS</span>
         </button>
         <button
           id="tabHeroes"
-          class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 border-r-2 border-black hover:bg-gray-100"
+          class="flex-1 py-4 font-bold text-lg bg-gray-700 text-gray-300 border-r-2 border-yellow-600 hover:bg-gray-600 transition-all"
         >
           <i class="fas fa-mask"></i>
+          <span class="hidden md:inline ml-2 text-sm">HERÓIS</span>
         </button>
         <button
           id="tabArtifacts"
-          class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 border-r-2 border-black hover:bg-gray-100"
+          class="flex-1 py-4 font-bold text-lg bg-gray-700 text-gray-300 border-r-2 border-yellow-600 hover:bg-gray-600 transition-all"
         >
           <i class="fas fa-trophy"></i>
+          <span class="hidden md:inline ml-2 text-sm">ARTEFATOS</span>
         </button>
         <button
           id="tabAchievements"
-          class="flex-1 py-3 font-comic text-xl bg-gray-200 text-gray-500 hover:bg-gray-100"
+          class="flex-1 py-4 font-bold text-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-all"
         >
           <i class="fas fa-star"></i>
+          <span class="hidden md:inline ml-2 text-sm">CONQUISTAS</span>
         </button>
       </div>
 
       <div
         id="panelUpgrades"
-        class="flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"
+        class="flex-1 overflow-y-auto p-3 space-y-3 custom-scroll pb-24 md:pb-6 bg-transparent"
       ></div>
       <div
         id="panelHeroes"
-        class="hidden flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"
+        class="hidden flex-1 overflow-y-auto p-3 space-y-3 custom-scroll pb-24 md:pb-6 bg-transparent"
       ></div>
       <div
         id="panelArtifacts"
-        class="hidden flex-1 overflow-y-auto p-2 grid grid-cols-2 gap-2 custom-scroll pb-20 md:pb-4 bg-gray-100 content-start"
+        class="hidden flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 custom-scroll pb-24 md:pb-6 bg-transparent content-start"
       ></div>
       <div
         id="panelAchievements"
-        class="hidden flex-1 overflow-y-auto p-2 space-y-2 custom-scroll pb-20 md:pb-4 bg-gray-100"
+        class="hidden flex-1 overflow-y-auto p-3 space-y-3 custom-scroll pb-24 md:pb-6 bg-transparent"
       ></div>
     </div>
 
@@ -285,52 +307,58 @@
       class="fixed inset-0 bg-black/90 z-[100] hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm"
     >
       <div
-        class="comic-box p-6 w-full max-w-sm bg-purple-900 border-4 border-white text-center"
+        class="comic-box p-8 w-full max-w-md bg-gradient-to-br from-blue-900 to-purple-900 border-4 border-yellow-400 text-center hero-entrance"
       >
-        <h2 class="font-comic text-4xl text-yellow-400 mb-2">OPÇÕES</h2>
+        <h2 class="dc-title text-5xl mb-6">QUARTEL GENERAL</h2>
         <div
-          class="bg-black/30 p-4 rounded mb-4 text-white text-left text-sm space-y-3"
+          class="comic-box bg-black/40 p-6 rounded-xl mb-6 text-white text-left space-y-4"
         >
           <div class="flex justify-between items-center">
-            <span>Áudio:</span>
+            <span class="text-yellow-300 font-bold"
+              ><i class="fas fa-volume-up mr-2"></i>Áudio:</span
+            >
             <button
               id="muteBtn"
-              class="font-bold text-yellow-400 border border-yellow-400 px-2 rounded"
+              class="comic-btn bg-gradient-to-r from-green-500 to-blue-500 px-4 py-2 text-sm font-bold"
             >
               LIGADO
             </button>
           </div>
           <div class="flex justify-between items-center">
-            <span>Nível Atual:</span>
-            <span id="levelDisplaySettings" class="font-bold text-white"
-              >1</span
+            <span class="text-yellow-300 font-bold"
+              ><i class="fas fa-chart-line mr-2"></i>Nível Atual:</span
             >
+            <span id="levelDisplaySettings" class="hero-text text-2xl">1</span>
           </div>
         </div>
-        <div class="mb-6">
-          <div class="bg-white text-black font-bold p-2 mb-2 rounded">
+        <div class="mb-8">
+          <div
+            class="comic-box bg-gradient-to-r from-yellow-400 to-red-500 text-black font-bold p-4 mb-4 rounded-xl"
+          >
             Cristais ao Resetar:
-            <span id="prestigeGain" class="text-purple-600 text-xl">0</span>
+            <span id="prestigeGain" class="text-purple-800 text-2xl ml-2"
+              >0</span
+            >
           </div>
           <button
             id="btnPrestige"
-            class="comic-btn bg-red-500 text-white w-full py-2 text-lg hover:bg-red-600"
+            class="comic-btn bg-gradient-to-r from-red-600 to-purple-600 text-white w-full py-4 text-xl font-bold hover:from-red-700 hover:to-purple-700"
           >
-            RESETAR (PRESTÍGIO)
+            <i class="fas fa-sync-alt mr-2"></i> REINICIAR MISSÃO
           </button>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-4">
           <button
             id="btnSave"
-            class="flex-1 comic-btn bg-blue-500 text-white py-2"
+            class="flex-1 comic-btn bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 text-lg font-bold"
           >
-            SALVAR JOGO
+            <i class="fas fa-save mr-2"></i> SALVAR
           </button>
           <button
             id="btnCloseSettings"
-            class="flex-1 comic-btn bg-white text-black py-2"
+            class="flex-1 comic-btn bg-gradient-to-r from-gray-500 to-gray-700 text-white py-3 text-lg font-bold"
           >
-            VOLTAR
+            <i class="fas fa-times mr-2"></i> FECHAR
           </button>
         </div>
       </div>
@@ -338,7 +366,7 @@
 
     <div
       id="notificationArea"
-      class="fixed top-20 right-4 flex flex-col space-y-2 z-[100] pointer-events-none items-end"
+      class="fixed top-24 right-6 flex flex-col space-y-3 z-[100] pointer-events-none items-end"
     ></div>
     <script type="module" src="./js/main.js"></script>
   </body>

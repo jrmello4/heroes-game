@@ -38,8 +38,6 @@ export const ParticleSys = {
 
       el.innerText = text;
 
-      // MUDANÇA AQUI: Trocamos 'font-comic' por 'font-sans' (Roboto) para leitura mais fácil
-      // E garantimos whitespace-nowrap para o texto não quebrar
       el.className = `font-sans font-black absolute pointer-events-none z-50 whitespace-nowrap ${colorClass}`;
 
       el.style.left = x + "px";
@@ -59,6 +57,53 @@ export const ParticleSys = {
     } catch (error) {
       console.warn("ParticleSys: Erro ao criar partícula", error);
     }
+  },
+
+  // === NOVO: PARTÍCULAS DE COMBO ===
+  spawnComboParticles(x, y, intensity) {
+    const particleCount = Math.floor(5 + intensity * 10);
+
+    for (let i = 0; i < particleCount; i++) {
+      setTimeout(() => {
+        const angle = (i / particleCount) * Math.PI * 2;
+        const distance = 50 + intensity * 100;
+        const px = x + Math.cos(angle) * distance;
+        const py = y + Math.sin(angle) * distance;
+
+        this.spawnFloatingText(
+          px,
+          py,
+          "⚡",
+          "text-yellow-300 text-2xl",
+          0.8 + intensity * 0.5
+        );
+      }, i * 50);
+    }
+  },
+
+  // === NOVO: EFEITO DE BRILHO PARA COMBOS ALTOS ===
+  createComboGlow(x, y, intensity) {
+    const glow = document.createElement("div");
+    glow.style.cssText = `
+      position: fixed;
+      left: ${x - 100}px;
+      top: ${y - 100}px;
+      width: 200px;
+      height: 200px;
+      background: radial-gradient(circle, rgba(255,215,0,${
+        intensity * 0.3
+      }) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 25;
+      border-radius: 50%;
+      animation: comboGlow 0.5s ease-out forwards;
+    `;
+
+    document.body.appendChild(glow);
+
+    setTimeout(() => {
+      if (glow.parentNode) glow.parentNode.removeChild(glow);
+    }, 500);
   },
 
   triggerScreenShake() {

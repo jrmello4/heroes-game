@@ -24,6 +24,18 @@ export const gameData = {
   villainCurrentHp: 15,
   combo: 0,
 
+  // === NOVO SISTEMA DE COMBOS DINÂMICOS ===
+  comboSystem: {
+    currentMultiplier: 1,
+    baseMultiplier: 1.1,
+    maxMultiplier: 5,
+    decayRate: 0.1,
+    streakTimer: 0,
+    streakDuration: 2, // 2 segundos entre cliques para manter combo
+    visualEffects: [],
+    highestCombo: 0,
+  },
+
   dailyMissions: {
     lastReset: Date.now(),
     completedToday: 0,
@@ -84,6 +96,25 @@ export const gameData = {
       done: false,
       reward: 0.5,
     },
+    // === NOVA CONQUISTA DE COMBO ===
+    combo20: {
+      id: "combo20",
+      name: "Mestre do Ritmo",
+      desc: "Alcance um combo multiplicador de 2.0x",
+      type: "combo_multiplier",
+      req: 2.0,
+      done: false,
+      reward: 0.15,
+    },
+    combo40: {
+      id: "combo40",
+      name: "Lenda do Clique",
+      desc: "Alcance um combo multiplicador de 4.0x",
+      type: "combo_multiplier",
+      req: 4.0,
+      done: false,
+      reward: 0.25,
+    },
   },
 
   upgrades: {
@@ -127,7 +158,7 @@ export const gameData = {
       type: ItemType.UPGRADE,
       synergy: true,
       targetTag: "human",
-      mult: 1.5, // +50%
+      mult: 1.5,
       desc: "Humanos +50% DPS",
     },
     tech_upgrade: {
@@ -282,6 +313,20 @@ export const gameData = {
       maxCooldown: 60000,
       duration: 10000,
     },
+  },
+
+  // === NOVO: SISTEMA DE METAS DE SESSÃO ===
+  sessionMilestones: {
+    clicks: [10, 25, 50, 100, 250],
+    villains: [5, 15, 30, 60, 120],
+    gold: [500, 1500, 5000, 15000, 50000],
+    combos: [2.0, 3.0, 4.0, 5.0],
+  },
+  sessionProgress: {
+    clicks: [false, false, false, false, false],
+    villains: [false, false, false, false, false],
+    gold: [false, false, false, false, false],
+    combos: [false, false, false, false],
   },
 };
 
