@@ -1,0 +1,213 @@
+/* ===== COMPONENTES ESPECÍFICOS ===== */
+
+/* Header do Jogo */
+.header-section {
+  padding: 16px;
+}
+
+.game-title {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.game-subtitle {
+  text-align: center;
+  font-size: 0.8rem;
+  opacity: 0.8;
+  letter-spacing: 1px;
+}
+
+/* Seção de Missões */
+.missions-section .tab-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+/* Seção da Loja */
+.shop-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.shop-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Prestígio */
+.prestige-section {
+  margin: 20px 0;
+}
+
+.prestige-info {
+  padding: 12px;
+  text-align: center;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--warning) 0%, var(--secondary) 100%);
+  color: var(--darker);
+  font-weight: bold;
+}
+
+/* Efeitos de Partículas */
+.particle {
+  position: absolute;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Weak Points */
+.weak-point {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: radial-gradient(
+    circle,
+    var(--accent) 0%,
+    var(--primary) 70%,
+    transparent 100%
+  );
+  border: 2px solid var(--lighter);
+  border-radius: 50%;
+  cursor: crosshair;
+  z-index: 20;
+  animation: weakPointPulse 1s infinite alternate;
+  box-shadow: 0 0 20px var(--accent);
+}
+
+@keyframes weakPointPulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 0 20px var(--accent);
+  }
+  to {
+    transform: scale(1.2);
+    box-shadow: 0 0 40px var(--accent), 0 0 60px var(--primary);
+  }
+}
+
+/* Drones */
+.drone {
+  position: absolute;
+  z-index: 30;
+  cursor: pointer;
+  animation: droneFloat 15s linear forwards;
+}
+
+@keyframes droneFloat {
+  0% {
+    transform: translateX(-100px) translateY(0px) rotate(0deg);
+  }
+  100% {
+    transform: translateX(calc(100vw + 100px)) translateY(0px) rotate(360deg);
+  }
+}
+
+/* Indicador de Vilão Especial */
+.special-villain-indicator {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  animation: specialIndicatorBounce 2s infinite;
+}
+
+@keyframes specialIndicatorBounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0px);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-10px);
+  }
+}
+
+/* Ambiente do Jogo */
+.game-environment {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+  opacity: 0.3;
+}
+
+/* Efeitos de Transição */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.5s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Estados de Destaque */
+.highlight {
+  animation: highlightPulse 1s infinite;
+}
+
+@keyframes highlightPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 217, 255, 0.7);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(0, 217, 255, 0);
+  }
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border: 2px solid var(--accent);
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

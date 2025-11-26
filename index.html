@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
     />
-    <title>DC HEROES CLICKER - Edição Especial</title>
+    <title>HERO CLICKER - Edição Épica</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
@@ -17,357 +17,197 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./css/style.css" />
+    <link rel="stylesheet" href="./css/components.css" />
   </head>
-  <body class="comic-bg flex flex-col md:flex-row h-screen overflow-hidden">
+  <body class="game-container">
     <div id="critFlash" class="crit-flash"></div>
 
-    <button
-      id="btnGlobalSettings"
-      class="fixed bottom-6 right-6 z-[70] comic-btn w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-2xl hover:scale-110 transition-transform"
-    >
-      <i class="fas fa-cog"></i>
-    </button>
-
-    <div
-      id="offlineModal"
-      class="fixed inset-0 bg-black/90 z-[90] hidden flex items-center justify-center px-4 backdrop-blur-sm"
-    >
-      <div class="comic-box p-8 max-w-md w-full text-center hero-entrance">
-        <h2 class="dc-title text-4xl mb-4">RELATÓRIO DE MISSÃO</h2>
-        <div
-          class="comic-box p-6 mb-6 bg-gradient-to-br from-blue-500 to-purple-600 border-4 border-yellow-400"
-        >
-          <p class="text-sm text-yellow-200 uppercase font-bold tracking-wider">
-            Tempo Offline
-          </p>
-          <p id="offlineTime" class="hero-text text-2xl">00:00:00</p>
-          <div class="h-1 bg-yellow-400/50 my-4 rounded-full"></div>
-          <p class="text-sm text-yellow-200 uppercase font-bold tracking-wider">
-            Ouro Coletado
-          </p>
-          <p id="offlineGold" class="hero-text text-4xl text-yellow-300">0</p>
+    <!-- Modal de Configurações -->
+    <div id="settingsModal" class="modal hidden">
+      <div class="comic-panel modal-content">
+        <h2 class="hero-title">QUARTEL GENERAL</h2>
+        <div class="settings-grid">
+          <div class="setting-item">
+            <span><i class="fas fa-volume-up"></i> Áudio:</span>
+            <button id="muteBtn" class="comic-button">LIGADO</button>
+          </div>
+          <div class="setting-item">
+            <span><i class="fas fa-chart-line"></i> Nível:</span>
+            <span id="levelDisplaySettings" class="hero-text">1</span>
+          </div>
         </div>
-        <button
-          id="btnClaimOffline"
-          class="comic-btn bg-gradient-to-r from-green-500 to-blue-500 text-white w-full py-4 text-xl font-bold hover:from-green-600 hover:to-blue-600"
-        >
-          <i class="fas fa-gem mr-2"></i> RECEBER RECOMPENSA
-        </button>
+        <div class="prestige-section">
+          <div class="comic-panel prestige-info">
+            Cristais ao Resetar:
+            <span id="prestigeGain" class="hero-text">0</span>
+          </div>
+          <button id="btnPrestige" class="comic-button secondary">
+            REINICIAR MISSÃO
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button id="btnSave" class="comic-button">SALVAR</button>
+          <button id="btnCloseSettings" class="comic-button secondary">
+            FECHAR
+          </button>
+        </div>
       </div>
     </div>
 
-    <div
-      class="md:w-1/4 w-full bg-gradient-to-b from-blue-900/90 to-purple-900/90 border-b-4 md:border-b-0 md:border-r-4 border-yellow-400 flex flex-row md:flex-col p-3 z-30 shadow-2xl relative shrink-0"
-    >
-      <div
-        class="hidden md:block text-center mb-6 p-6 comic-box bg-gradient-to-r from-red-600 via-blue-600 to-purple-600 border-4 border-yellow-400 transform -rotate-1 hero-entrance"
-      >
-        <h1 class="dc-title text-5xl mb-2">DC HEROES</h1>
-        <p class="text-yellow-300 text-sm font-bold tracking-widest">
-          CLICKER ÉPICO
-        </p>
-      </div>
-
-      <div class="flex md:flex-col gap-3 w-full pr-14 md:pr-0">
-        <div
-          class="comic-box p-4 flex-1 flex flex-col justify-center bg-gradient-to-br from-yellow-400/20 to-red-500/20 min-w-[120px] hero-entrance"
-        >
-          <div
-            class="flex justify-between text-xs font-black text-yellow-200 uppercase tracking-wider"
-          >
-            <span><i class="fas fa-coins mr-1"></i> Ouro</span>
-            <span id="prestigeCount" class="text-purple-300 hidden">
-              <i class="fas fa-gem"></i> <span id="crystalCount">0</span>
-            </span>
+    <!-- Layout Principal do Jogo -->
+    <div class="game-layout">
+      <!-- Painel Esquerdo -->
+      <div class="left-panel">
+        <div class="comic-panel header-section">
+          <div class="game-title">
+            <h1 class="hero-title">HERO CLICKER</h1>
+            <p class="game-subtitle">CLIQUE ÉPICO</p>
           </div>
-          <div class="flex items-center gap-3 mt-2">
-            <i class="fas fa-coins text-yellow-400 text-2xl"></i>
-            <span id="scoreDisplay" class="hero-text text-3xl leading-none"
-              >0</span
-            >
-          </div>
-        </div>
 
-        <div
-          class="comic-box p-4 flex-1 flex flex-col justify-center bg-gradient-to-br from-red-500/20 to-blue-500/20 min-w-[120px] hero-entrance"
-        >
-          <p
-            class="text-xs font-black text-yellow-200 uppercase tracking-wider"
-          >
-            Dano/Seg
-          </p>
-          <div class="flex items-center gap-3 mt-2">
-            <i class="fas fa-bolt text-red-400 text-2xl"></i>
-            <span id="dpsDisplay" class="hero-text text-3xl leading-none"
-              >0</span
-            >
-          </div>
-        </div>
-      </div>
+          <div class="resources-grid">
+            <div class="resource-item">
+              <i class="fas fa-coins resource-icon"></i>
+              <div class="resource-value" id="scoreDisplay">0</div>
+              <div class="resource-label">Ouro</div>
+            </div>
 
-      <div class="hidden md:flex flex-1 flex-col mt-6 gap-3 overflow-hidden">
-        <div
-          class="comic-box p-4 bg-gradient-to-b from-purple-500/20 to-blue-600/20 flex-1 overflow-y-auto custom-scroll hero-entrance"
-        >
-          <div id="missionsContainer">
-            <div class="text-center text-yellow-200 py-8">
-              <i class="fas fa-tasks text-4xl mb-4 text-yellow-400"></i>
-              <p class="text-lg font-bold tracking-wider">
-                PREPARANDO MISSÕES...
-              </p>
+            <div class="resource-item">
+              <i class="fas fa-bolt resource-icon"></i>
+              <div class="resource-value" id="dpsDisplay">0</div>
+              <div class="resource-label">Dano/Seg</div>
             </div>
           </div>
         </div>
+
+        <div class="comic-panel missions-section">
+          <div class="section-header">
+            <h3>MISSÕES DIÁRIAS</h3>
+            <div id="missionsCountBadge" class="badge">0/0</div>
+          </div>
+          <div class="tab-content" id="missionsContainer">
+            <!-- Missões serão carregadas aqui -->
+          </div>
+        </div>
       </div>
-    </div>
 
-    <div
-      class="relative flex-1 h-[45vh] md:h-full flex flex-col items-center justify-center overflow-hidden bg-city transition-all duration-1000 order-last md:order-none"
-      id="gameZone"
-    >
-      <div class="absolute inset-0 bg-pattern"></div>
-      <canvas id="canvasOverlay"></canvas>
+      <!-- Área Central do Jogo -->
+      <div class="main-game-area comic-panel">
+        <div class="villain-info">
+          <h2 id="villainName" class="hero-title">Vilão</h2>
 
-      <div
-        class="absolute top-8 w-full flex flex-col items-center z-50 pointer-events-none"
-      >
-        <h2 id="villainName" class="dc-title text-4xl mb-3 tracking-widest">
-          Vilão
-        </h2>
-
-        <div class="relative w-80 flex flex-col items-center drop-shadow-2xl">
-          <div
-            class="w-full h-10 bg-gray-900/80 border-4 border-yellow-400 rounded-xl overflow-hidden relative z-20 comic-box"
-          >
-            <div
-              id="hpBar"
-              class="health-bar h-full transition-all duration-100 ease-linear"
-              style="width: 100%"
-            ></div>
-            <p
-              id="hpText"
-              class="absolute inset-0 z-30 flex items-center justify-center text-base font-black text-white tracking-widest text-shadow"
-            >
-              20 / 20
-            </p>
+          <div class="health-container">
+            <div class="villain-health">
+              <div id="hpBar" class="health-bar" style="width: 100%"></div>
+            </div>
+            <div id="hpText" class="health-text">100 / 100</div>
           </div>
 
-          <div
-            id="bossTimerContainer"
-            class="w-[95%] h-5 bg-gradient-to-r from-red-600 to-yellow-600 border-x-4 border-b-4 border-yellow-400 rounded-b-xl overflow-hidden relative z-10 hidden mt-[-2px] comic-box"
-          >
-            <div
-              id="bossTimerBar"
-              class="health-bar h-full transition-all duration-100 linear"
-              style="width: 100%"
-            ></div>
-          </div>
-
-          <div
-            id="bossTimerTextOverlay"
-            class="hidden absolute -right-16 top-3 hero-text text-2xl"
-          >
+          <div id="bossTimerContainer" class="boss-timer hidden">
+            <div id="bossTimerBar" class="boss-timer-bar"></div>
             <span id="bossTimerText">30s</span>
           </div>
         </div>
-      </div>
 
-      <div
-        id="clickZone"
-        class="relative z-20 flex-1 w-full flex items-center justify-center cursor-crosshair group select-none outline-none"
-      >
-        <div
-          id="villainSprite"
-          class="text-[10rem] md:text-[12rem] transition-transform filter drop-shadow-2xl text-white relative hero-entrance"
-        >
-          <i id="villainIcon" class="fas fa-mask"></i>
+        <div id="clickZone" class="click-zone">
+          <div id="villainSprite" class="villain-sprite">
+            <i id="villainIcon" class="fas fa-mask"></i>
+          </div>
+
+          <div id="comboContainer" class="combo-display hidden">
+            x<span id="comboText">1</span>
+          </div>
+
+          <div id="comboMultiplier" class="combo-multiplier hidden">
+            <i class="fas fa-bolt"></i>
+            COMBO: <span id="comboMultValue">1.0</span>x
+          </div>
+        </div>
+
+        <div class="skills-container">
+          <button id="skill1" class="skill-button">
+            <i class="fas fa-fire skill-icon"></i>
+            <span class="skill-label">FÚRIA</span>
+            <div class="cooldown-overlay"></div>
+          </button>
+
+          <button id="skill2" class="skill-button">
+            <i class="fas fa-crosshairs skill-icon"></i>
+            <span class="skill-label">MIRA CRÍTICA</span>
+            <div class="cooldown-overlay"></div>
+          </button>
+
+          <button id="skill3" class="skill-button">
+            <i class="fas fa-users skill-icon"></i>
+            <span class="skill-label">EQUIPE</span>
+            <div class="cooldown-overlay"></div>
+          </button>
         </div>
       </div>
 
-      <div
-        id="comboContainer"
-        class="absolute bottom-28 md:bottom-36 right-6 md:right-12 z-10 hidden transform rotate-6 transition-all combo-display"
-      >
-        <h1 id="comboText" class="dc-title text-6xl text-shadow animate-bounce">
-          x1
-        </h1>
-      </div>
-
-      <div
-        id="comboMultiplier"
-        class="fixed top-6 left-6 z-50 comic-box bg-gradient-to-r from-purple-600 to-red-600 text-white px-4 py-2 border-3 border-yellow-400 hidden"
-      >
-        <div class="flex items-center gap-3">
-          <i class="fas fa-bolt text-yellow-400 text-xl"></i>
-          <span class="font-bold text-lg tracking-wider"
-            >COMBO: <span id="comboMultValue">1.0</span>x</span
-          >
-        </div>
-      </div>
-
-      <div class="w-full max-w-md px-6 pb-6 grid grid-cols-3 gap-4 z-30">
-        <button
-          id="skill1"
-          class="comic-btn skill-fury h-16 rounded-xl flex flex-col items-center justify-center disabled:opacity-50 relative group"
-        >
-          <i
-            class="fas fa-fire text-2xl mb-1 group-hover:scale-110 transition-transform"
-          ></i>
-          <span class="text-xs font-bold tracking-wider">FÚRIA</span>
-          <div
-            id="cd-fury"
-            class="absolute bottom-0 left-0 w-full bg-black/40 h-0 transition-all rounded-b-lg"
-          ></div>
-        </button>
-        <button
-          id="skill2"
-          class="comic-btn skill-crit h-16 rounded-xl flex flex-col items-center justify-center disabled:opacity-50 relative group"
-        >
-          <i
-            class="fas fa-crosshairs text-2xl mb-1 group-hover:scale-110 transition-transform"
-          ></i>
-          <span class="text-xs font-bold tracking-wider">MIRA CRÍTICA</span>
-          <div
-            id="cd-crit"
-            class="absolute bottom-0 left-0 w-full bg-black/40 h-0 transition-all rounded-b-lg"
-          ></div>
-        </button>
-        <button
-          id="skill3"
-          class="comic-btn skill-team h-16 rounded-xl flex flex-col items-center justify-center disabled:opacity-50 relative group"
-        >
-          <i
-            class="fas fa-users text-2xl mb-1 group-hover:scale-110 transition-transform"
-          ></i>
-          <span class="text-xs font-bold tracking-wider">LIGA DA JUSTIÇA</span>
-          <div
-            id="cd-team"
-            class="absolute bottom-0 left-0 w-full bg-black/40 h-0 transition-all rounded-b-lg"
-          ></div>
-        </button>
-      </div>
-    </div>
-
-    <div
-      class="w-full md:w-1/4 h-flex-1 md:h-full bg-gradient-to-b from-gray-900/95 to-blue-900/95 border-l-0 md:border-l-4 border-yellow-400 flex flex-col z-30 shadow-2xl shrink-0"
-    >
-      <div
-        class="flex border-b-4 border-yellow-400 bg-gradient-to-r from-red-600/80 to-blue-600/80 overflow-x-auto"
-      >
-        <button
-          id="tabUpgrades"
-          class="flex-1 py-4 font-bold text-lg bg-yellow-400 border-r-2 border-yellow-600 relative top-[2px] transition-all hover:bg-yellow-300"
-        >
-          <i class="fas fa-dumbbell"></i>
-          <span class="hidden md:inline ml-2 text-sm">MELHORIAS</span>
-        </button>
-        <button
-          id="tabHeroes"
-          class="flex-1 py-4 font-bold text-lg bg-gray-700 text-gray-300 border-r-2 border-yellow-600 hover:bg-gray-600 transition-all"
-        >
-          <i class="fas fa-mask"></i>
-          <span class="hidden md:inline ml-2 text-sm">HERÓIS</span>
-        </button>
-        <button
-          id="tabArtifacts"
-          class="flex-1 py-4 font-bold text-lg bg-gray-700 text-gray-300 border-r-2 border-yellow-600 hover:bg-gray-600 transition-all"
-        >
-          <i class="fas fa-trophy"></i>
-          <span class="hidden md:inline ml-2 text-sm">ARTEFATOS</span>
-        </button>
-        <button
-          id="tabAchievements"
-          class="flex-1 py-4 font-bold text-lg bg-gray-700 text-gray-300 hover:bg-gray-600 transition-all"
-        >
-          <i class="fas fa-star"></i>
-          <span class="hidden md:inline ml-2 text-sm">CONQUISTAS</span>
-        </button>
-      </div>
-
-      <div
-        id="panelUpgrades"
-        class="flex-1 overflow-y-auto p-3 space-y-3 custom-scroll pb-24 md:pb-6 bg-transparent"
-      ></div>
-      <div
-        id="panelHeroes"
-        class="hidden flex-1 overflow-y-auto p-3 space-y-3 custom-scroll pb-24 md:pb-6 bg-transparent"
-      ></div>
-      <div
-        id="panelArtifacts"
-        class="hidden flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 custom-scroll pb-24 md:pb-6 bg-transparent content-start"
-      ></div>
-      <div
-        id="panelAchievements"
-        class="hidden flex-1 overflow-y-auto p-3 space-y-3 custom-scroll pb-24 md:pb-6 bg-transparent"
-      ></div>
-    </div>
-
-    <div
-      id="settingsModal"
-      class="fixed inset-0 bg-black/90 z-[100] hidden flex flex-col items-center justify-center p-4 backdrop-blur-sm"
-    >
-      <div
-        class="comic-box p-8 w-full max-w-md bg-gradient-to-br from-blue-900 to-purple-900 border-4 border-yellow-400 text-center hero-entrance"
-      >
-        <h2 class="dc-title text-5xl mb-6">QUARTEL GENERAL</h2>
-        <div
-          class="comic-box bg-black/40 p-6 rounded-xl mb-6 text-white text-left space-y-4"
-        >
-          <div class="flex justify-between items-center">
-            <span class="text-yellow-300 font-bold"
-              ><i class="fas fa-volume-up mr-2"></i>Áudio:</span
-            >
+      <!-- Painel Direito (Loja) -->
+      <div class="right-panel">
+        <div class="comic-panel shop-section">
+          <div class="shop-tabs">
             <button
-              id="muteBtn"
-              class="comic-btn bg-gradient-to-r from-green-500 to-blue-500 px-4 py-2 text-sm font-bold"
+              id="tabUpgrades"
+              class="tab-button active"
+              data-tab="upgrades"
             >
-              LIGADO
+              <i class="fas fa-dumbbell"></i>
+              <span>MELHORIAS</span>
+            </button>
+            <button id="tabHeroes" class="tab-button" data-tab="heroes">
+              <i class="fas fa-mask"></i>
+              <span>HERÓIS</span>
+            </button>
+            <button id="tabArtifacts" class="tab-button" data-tab="artifacts">
+              <i class="fas fa-trophy"></i>
+              <span>ARTEFATOS</span>
+            </button>
+            <button
+              id="tabAchievements"
+              class="tab-button"
+              data-tab="achievements"
+            >
+              <i class="fas fa-star"></i>
+              <span>CONQUISTAS</span>
             </button>
           </div>
-          <div class="flex justify-between items-center">
-            <span class="text-yellow-300 font-bold"
-              ><i class="fas fa-chart-line mr-2"></i>Nível Atual:</span
-            >
-            <span id="levelDisplaySettings" class="hero-text text-2xl">1</span>
+
+          <div class="shop-content">
+            <div id="panelUpgrades" class="tab-panel active">
+              <!-- Melhorias serão carregadas aqui -->
+            </div>
+            <div id="panelHeroes" class="tab-panel">
+              <!-- Heróis serão carregadas aqui -->
+            </div>
+            <div id="panelArtifacts" class="tab-panel">
+              <!-- Artefatos serão carregadas aqui -->
+            </div>
+            <div id="panelAchievements" class="tab-panel">
+              <!-- Conquistas serão carregadas aqui -->
+            </div>
           </div>
         </div>
-        <div class="mb-8">
-          <div
-            class="comic-box bg-gradient-to-r from-yellow-400 to-red-500 text-black font-bold p-4 mb-4 rounded-xl"
-          >
-            Cristais ao Resetar:
-            <span id="prestigeGain" class="text-purple-800 text-2xl ml-2"
-              >0</span
-            >
+
+        <div class="comic-panel stats-section">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-label">Nível</div>
+              <div id="levelDisplay" class="stat-value">1</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-label">Cristais</div>
+              <div id="crystalCount" class="stat-value">0</div>
+            </div>
           </div>
-          <button
-            id="btnPrestige"
-            class="comic-btn bg-gradient-to-r from-red-600 to-purple-600 text-white w-full py-4 text-xl font-bold hover:from-red-700 hover:to-purple-700"
-          >
-            <i class="fas fa-sync-alt mr-2"></i> REINICIAR MISSÃO
-          </button>
-        </div>
-        <div class="flex gap-4">
-          <button
-            id="btnSave"
-            class="flex-1 comic-btn bg-gradient-to-r from-green-500 to-blue-500 text-white py-3 text-lg font-bold"
-          >
-            <i class="fas fa-save mr-2"></i> SALVAR
-          </button>
-          <button
-            id="btnCloseSettings"
-            class="flex-1 comic-btn bg-gradient-to-r from-gray-500 to-gray-700 text-white py-3 text-lg font-bold"
-          >
-            <i class="fas fa-times mr-2"></i> FECHAR
+          <button id="btnGlobalSettings" class="comic-button settings-button">
+            <i class="fas fa-cog"></i>
           </button>
         </div>
       </div>
     </div>
 
-    <div
-      id="notificationArea"
-      class="fixed top-24 right-6 flex flex-col space-y-3 z-[100] pointer-events-none items-end"
-    ></div>
     <script type="module" src="./js/main.js"></script>
   </body>
 </html>

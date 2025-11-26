@@ -231,7 +231,7 @@ function ascend(type, key) {
   }
 }
 
-// === NOVO: ATUALIZAÇÃO DO SISTEMA DE COMBOS ===
+// === ATUALIZAÇÃO DO SISTEMA DE COMBOS ===
 function updateComboSystem(dt) {
   const comboSystem = gameData.comboSystem;
 
@@ -253,7 +253,7 @@ function updateComboSystem(dt) {
   }
 }
 
-// === NOVO: VERIFICAÇÃO DE METAS DE SESSÃO ===
+// === VERIFICAÇÃO DE METAS DE SESSÃO ===
 function checkSessionMilestones() {
   const milestones = gameData.sessionMilestones;
   const progress = gameData.sessionProgress;
@@ -818,7 +818,7 @@ function checkAchievements() {
           conditionMet = true;
         if (a.type === AchievementType.LEVEL && gameData.level >= a.req)
           conditionMet = true;
-        // === NOVO: VERIFICAÇÃO DE CONQUISTAS DE COMBO ===
+        // === VERIFICAÇÃO DE CONQUISTAS DE COMBO ===
         if (
           a.type === "combo_multiplier" &&
           gameData.comboSystem.currentMultiplier >= a.req
@@ -924,19 +924,42 @@ function doPrestige() {
 
 function setupEvents() {
   try {
+    // Sistema de clique na zona do vilão
     const clickZone = document.getElementById("clickZone");
     if (clickZone) {
-      const newClickZone = clickZone.cloneNode(true);
-      clickZone.parentNode.replaceChild(newClickZone, clickZone);
-
-      newClickZone.addEventListener("pointerdown", (e) => {
+      clickZone.addEventListener("pointerdown", (e) => {
         if (e.target.classList.contains("weak-point")) return;
         e.preventDefault();
         handleInput(e.clientX, e.clientY);
       });
     }
 
-    document.body.addEventListener("click", (e) => {
+    // Sistema de abas da loja
+    const tabButtons = document.querySelectorAll(".tab-button");
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", function () {
+        const tabName = this.getAttribute("data-tab");
+
+        // Atualiza botões ativos
+        tabButtons.forEach((btn) => btn.classList.remove("active"));
+        this.classList.add("active");
+
+        // Atualiza conteúdo das abas
+        document.querySelectorAll(".tab-panel").forEach((panel) => {
+          panel.classList.remove("active");
+        });
+        document
+          .getElementById(
+            "panel" + tabName.charAt(0).toUpperCase() + tabName.slice(1)
+          )
+          .classList.add("active");
+
+        Shop.render();
+      });
+    });
+
+    // Sistema de compras e ações
+    document.addEventListener("click", (e) => {
       const btn = e.target.closest("[data-action]");
       if (!btn) return;
 
@@ -953,40 +976,7 @@ function setupEvents() {
       }
     });
 
-    ["upgrades", "heroes", "artifacts", "achievements"].forEach((t) => {
-      const tabBtn = document.getElementById(
-        "tab" + t.charAt(0).toUpperCase() + t.slice(1)
-      );
-      if (tabBtn) {
-        tabBtn.addEventListener("click", () => {
-          ["upgrades", "heroes", "artifacts", "achievements"].forEach((x) => {
-            const panel = document.getElementById(
-              "panel" + x.charAt(0).toUpperCase() + x.slice(1)
-            );
-            const tab = document.getElementById(
-              "tab" + x.charAt(0).toUpperCase() + x.slice(1)
-            );
-
-            if (panel) panel.classList.add("hidden");
-            if (tab) tab.classList.replace("bg-yellow-300", "bg-gray-200");
-          });
-
-          const targetPanel = document.getElementById(
-            "panel" + t.charAt(0).toUpperCase() + t.slice(1)
-          );
-          const targetTab = document.getElementById(
-            "tab" + t.charAt(0).toUpperCase() + t.slice(1)
-          );
-
-          if (targetPanel) targetPanel.classList.remove("hidden");
-          if (targetTab)
-            targetTab.classList.replace("bg-gray-200", "bg-yellow-300");
-
-          Shop.render();
-        });
-      }
-    });
-
+    // Sistema de habilidades
     const skills = [
       { id: "skill1", key: SkillType.FURY },
       { id: "skill2", key: SkillType.CRIT },
@@ -999,6 +989,7 @@ function setupEvents() {
       }
     });
 
+    // Eventos de UI
     const uiEvents = [
       {
         id: "btnGlobalSettings",
@@ -1020,10 +1011,9 @@ function setupEvents() {
       },
       { id: "btnPrestige", fn: doPrestige },
       {
-        id: "btnClaimOffline",
-        fn: () => {
-          document.getElementById("offlineModal").classList.add("hidden");
-          document.getElementById("offlineModal").style.display = "none";
+        id: "muteBtn",
+        fn: (e) => {
+          e.target.innerText = AudioSys.toggleMute() ? "DESLIGADO" : "LIGADO";
         },
       },
     ];
@@ -1033,10 +1023,16 @@ function setupEvents() {
       if (el) el.addEventListener("click", evt.fn);
     });
 
-    if (document.getElementById("muteBtn"))
-      document.getElementById("muteBtn").addEventListener("click", (e) => {
-        e.target.innerText = AudioSys.toggleMute() ? "DESLIGADO" : "LIGADO";
-      });
+    // Modal de progresso offline (simplificado)
+    const offlineModal = document.getElementById("offlineModal");
+    if (offlineModal) {
+      const closeBtn = offlineModal.querySelector("#btnClaimOffline");
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+          offlineModal.classList.add("hidden");
+        });
+      }
+    }
   } catch (error) {
     console.warn("Erro no setupEvents:", error);
   }
@@ -1055,4 +1051,9 @@ window.addEventListener("pagehide", cleanup);
 
 window.gameData = gameData;
 
-init();
+// Inicialização do jogo
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init);
+} else {
+  init();
+}
