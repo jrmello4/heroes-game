@@ -2,10 +2,10 @@ import { gameData } from "../core/GameData.js";
 import { AudioSys } from "./AudioSys.js";
 import { ParticleSys } from "./ParticleSys.js";
 import { MissionType } from "../core/Constants.js";
+import { Renderer } from "../ui/Renderer.js"; // Importar Renderer para formatar números
 
 export const InputSys = {
   comboTimer: null,
-  lastCritTime: 0,
 
   async handleClick(
     x,
@@ -43,32 +43,40 @@ export const InputSys = {
         (activeCritBuff && Math.random() < 0.5) ||
         forcedCrit;
 
-      const now = Date.now();
-      const canFlash = now - this.lastCritTime > 300;
+      // Calcula o dano final para exibir
+      let finalDamage = dmg * mult;
 
       if (isCrit) {
         mult *= 5;
         if (forcedCrit) mult *= 2;
+        finalDamage = dmg * mult; // Recalcula dano crítico
 
-        if (canFlash) {
-          await AudioSys.playCrit();
-          ParticleSys.spawnFloatingText(
-            x,
-            y,
-            "CRÍTICO!",
-            "text-yellow-400",
-            2.0
-          );
-          ParticleSys.triggerScreenShake();
-          ParticleSys.flashScreen();
-          this.lastCritTime = now;
-        }
+        await AudioSys.playCrit();
+
+        // CORREÇÃO VISUAL: Fonte Sans, Borda Preta, Sombra
+        ParticleSys.spawnFloatingText(
+          x,
+          y,
+          `CRÍTICO! ${Renderer.formatNumber(finalDamage)}`,
+          "text-yellow-300 stroke-black stroke-2 drop-shadow-md tracking-wider",
+          2.0
+        );
+        ParticleSys.triggerScreenShake();
+        ParticleSys.flashScreen();
       } else {
         await AudioSys.playClick();
-        ParticleSys.spawnFloatingText(x, y, "POW!", "text-white", 1.0);
+
+        // CORREÇÃO VISUAL: Mostra "POW!" + Dano
+        ParticleSys.spawnFloatingText(
+          x,
+          y,
+          `POW! ${Renderer.formatNumber(finalDamage)}`,
+          "text-white stroke-black stroke-2 drop-shadow-md",
+          1.0
+        );
       }
 
-      damageCallback(dmg * mult);
+      damageCallback(finalDamage);
 
       return { isCrit, showCombo };
     } catch (error) {

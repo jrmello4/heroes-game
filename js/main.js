@@ -33,13 +33,17 @@ let lastWeakPointTime = 0;
 let lastAchievementCheckTime = 0;
 let lastSpecialVillainCheck = 0;
 
+// === DRONE CONTROLE ===
+let lastDroneSpawn = Date.now();
+let nextDroneInterval = 60000 + Math.random() * 120000; // Entre 1 e 3 minutos
+// ======================
+
 const RENDER_INTERVAL = 1000 / 30;
 const SAVE_INTERVAL = 30000;
 const WEAK_POINT_INTERVAL = 4000;
 const ACHIEVEMENT_CHECK_INTERVAL = 1000;
 const SPECIAL_VILLAIN_CHECK = 5000;
 
-// Cache para otimização de performance
 let achievementBonusCache = 0;
 
 const weakPointPool = [];
@@ -58,13 +62,9 @@ function init() {
   ParticleSys.init();
   Renderer.init();
 
-  // Contexto seguro para o SaveSys
   const loadSuccess = ErrorHandler.safeExecute(() => SaveSys.load(), false)();
 
-  // INICIALIZAÇÃO DE MILESTONES: Salva os atributos base para cálculos
   initBaseStats();
-
-  // Recalcula todos os status com base nos milestones atuais
   recalculateGlobalStats();
 
   if (
@@ -84,8 +84,6 @@ function init() {
   }
 
   MissionSys.init();
-
-  // Atualiza cache de conquistas
   updateAchievementBonusCache();
 
   ErrorHandler.safeExecute(() => {
@@ -125,10 +123,7 @@ function init() {
   ErrorHandler.showSuccess("Jogo pronto!");
 }
 
-// === NOVO SISTEMA DE MILESTONES ===
 function initBaseStats() {
-  // Salva o DPS/Boost original como "base" se ainda não existir
-  // Isso previne que o multiplicador seja aplicado recursivamente ao salvar/carregar
   for (let k in gameData.heroes) {
     const h = gameData.heroes[k];
     if (!h.baseDps) h.baseDps = h.dps;
@@ -140,60 +135,67 @@ function initBaseStats() {
 }
 
 function recalculateGlobalStats() {
-  // Reseta status globais
   gameData.autoDamage = 0;
-  let totalBaseClick = 1; // Dano base inicial
+  let totalBaseClick = 1;
 
-  // Recalcula Heróis (DPS)
+  let tagMultipliers = {};
+  for (let k in gameData.upgrades) {
+    const u = gameData.upgrades[k];
+    if (u.synergy && u.count > 0 && u.targetTag) {
+      if (!tagMultipliers[u.targetTag]) tagMultipliers[u.targetTag] = 1;
+      const bonusPerLevel = u.mult - 1;
+      tagMultipliers[u.targetTag] += bonusPerLevel * u.count;
+    }
+  }
+
   for (let k in gameData.heroes) {
     const h = gameData.heroes[k];
-    // FÓRMULA DE MILESTONE: Multiplicador 4x a cada 25 níveis
     const milestones = Math.floor(h.count / 25);
-    const multiplier = Math.pow(4, milestones);
+    let multiplier = Math.pow(4, milestones);
 
-    // Atualiza o DPS atual do herói (visual e efetivo)
+    if (h.tags) {
+      h.tags.forEach((tag) => {
+        if (tagMultipliers[tag]) {
+          multiplier *= tagMultipliers[tag];
+        }
+      });
+    }
+
     h.dps = h.baseDps * multiplier;
-
-    // Soma ao total
     gameData.autoDamage += h.dps * h.count;
   }
 
-  // Recalcula Upgrades (Click)
   for (let k in gameData.upgrades) {
     const u = gameData.upgrades[k];
-    const milestones = Math.floor(u.count / 25);
-    const multiplier = Math.pow(4, milestones);
+    if (!u.synergy) {
+      const milestones = Math.floor(u.count / 25);
+      const multiplier = Math.pow(4, milestones);
 
-    u.boost = u.baseBoost * multiplier;
-
-    totalBaseClick += u.boost * u.count;
+      u.boost = u.baseBoost * multiplier;
+      totalBaseClick += u.boost * u.count;
+    }
   }
 
   gameData.clickDamage = totalBaseClick;
 }
-
 function checkMilestone(item, prevCount) {
-  // Verifica se cruzou um múltiplo de 25
   if (Math.floor(item.count / 25) > Math.floor(prevCount / 25)) {
     const newMult = Math.pow(4, Math.floor(item.count / 25));
 
-    // Feedback Visual (Juice!)
     ErrorHandler.showSuccess(
       `🚀 ${item.name}: MILESTONE! Dano x4! (Total: x${newMult})`
     );
-    AudioSys.playLevelUp(); // Som de conquista
+    AudioSys.playLevelUp();
 
-    // Partículas no centro da tela
     ParticleSys.spawnFloatingText(
       window.innerWidth / 2,
       window.innerHeight / 2 - 100,
-      "POWER UP! x4",
-      "text-yellow-400",
-      30
+      "POWER UP!\nx4 DANO",
+      "text-yellow-400 text-center tracking-widest stroke-black stroke-2 drop-shadow-lg",
+      1.5
     );
   }
 }
-// ==================================
 
 function updateAchievementBonusCache() {
   achievementBonusCache = getAchievementBonus();
@@ -250,6 +252,14 @@ function update(dt) {
     applySpecialVillainEffects(dt);
   }
 
+  // === LÓGICA DO DRONE ===
+  if (currentTime - lastDroneSpawn > nextDroneInterval) {
+    Renderer.spawnDrone(catchDrone);
+    lastDroneSpawn = currentTime;
+    nextDroneInterval = 60000 + Math.random() * 180000;
+  }
+  // ======================
+
   for (let k in gameData.skills) {
     let s = gameData.skills[k];
     if (s.cooldown > 0) s.cooldown -= dt;
@@ -288,6 +298,41 @@ function update(dt) {
     }
   }
 }
+
+// === CALLBACK DO DRONE (CORRIGIDO) ===
+function catchDrone(x, y) {
+  const type = Math.random() > 0.5 ? "GOLD" : "BUFF";
+
+  AudioSys.playLevelUp();
+
+  if (type === "GOLD") {
+    const reward = Math.max(100, Math.floor(gameData.villainMaxHp * 0.2));
+    gameData.score += reward;
+
+    // CORREÇÃO VISUAL:
+    // 1. stroke-black e stroke-2: Cria uma borda preta nítida em volta da letra (melhor que shadow)
+    // 2. drop-shadow-md: Sombra leve para destacar do fundo
+    ParticleSys.spawnFloatingText(
+      x,
+      y,
+      `SUPRIMENTOS!\n+${Renderer.formatNumber(reward)} Ouro`,
+      "text-yellow-300 text-center leading-none tracking-wider stroke-black stroke-2 drop-shadow-md",
+      1.2
+    );
+    Shop.render();
+  } else {
+    activateSkill(SkillType.FURY);
+
+    ParticleSys.spawnFloatingText(
+      x,
+      y,
+      `ADRENALINA!\nFÚRIA ATIVADA!`,
+      "text-red-500 text-center leading-none tracking-wider stroke-black stroke-2 drop-shadow-md",
+      1.2
+    );
+  }
+}
+// =========================
 
 function checkSpecialVillain() {
   if (Math.random() < 0.15) {
@@ -457,7 +502,6 @@ function defeatVillain() {
 
     let reward = Math.ceil(gameData.villainMaxHp / 4);
 
-    // Lucky Drop (10% chance de 3x Gold)
     if (Math.random() < 0.1) {
       reward *= 3;
       ParticleSys.spawnFloatingText(
@@ -673,10 +717,7 @@ function buy(type, key) {
       const prevCount = item.count;
       item.count++;
 
-      // Verifica se atingiu um Milestone (ex: 24 -> 25)
       checkMilestone(item, prevCount);
-
-      // Recalcula tudo (simples e seguro)
       recalculateGlobalStats();
 
       Shop.render();

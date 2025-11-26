@@ -2,6 +2,7 @@ import { gameData } from "../core/GameData.js";
 import { MissionSys } from "../systems/MissionSys.js";
 import { SkillType } from "../core/Constants.js";
 
+// ... (Funções auxiliares como createMissionElement mantidas iguais) ...
 function createMissionElement(mission) {
   const div = document.createElement("div");
   div.id = `mission-${mission.id}`;
@@ -234,15 +235,12 @@ export const Renderer = {
   updateVillainSprite(v, isBoss) {
     if (!this.els.villainName) this.refreshElements();
 
-    // CORREÇÃO AQUI: Acessa v.name se for boss
     this.els.villainName.innerText = isBoss
       ? v.name
       : `Nvl ${gameData.level} ${v.name}`;
 
     if (this.els.villainIcon) {
-      this.els.villainIcon.className = isBoss
-        ? `fas ${v.icon}`
-        : `fas ${v.icon}`;
+      this.els.villainIcon.className = `fas ${v.icon}`;
     }
 
     const newClass = isBoss
@@ -285,6 +283,49 @@ export const Renderer = {
     const indicator = document.getElementById("specialVillainIndicator");
     if (indicator) indicator.classList.add("hidden");
   },
+
+  // === NOVO: SPAWN DO DRONE ===
+  spawnDrone(onCatchCallback) {
+    if (!this.els.gameZone) this.refreshElements();
+
+    const drone = document.createElement("div");
+    drone.className = "drone-fly";
+    drone.style.top = `${20 + Math.random() * 40}%`; // Altura aleatória (20% a 60%)
+
+    // HTML do Drone (Caixa de suprimentos voadora)
+    drone.innerHTML = `
+        <div class="relative">
+            <i class="fas fa-parachute-box text-5xl text-yellow-500 drop-shadow-lg"></i>
+            <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-1 rounded-full animate-bounce">!</div>
+        </div>
+    `;
+
+    // Evento de Clique
+    drone.onpointerdown = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Efeito visual ao clicar
+      drone.style.transform = "scale(1.5)";
+      drone.style.opacity = "0";
+
+      // Executa callback
+      onCatchCallback(e.clientX, e.clientY);
+
+      // Remove do DOM
+      setTimeout(() => {
+        if (drone.parentNode) drone.parentNode.removeChild(drone);
+      }, 200);
+    };
+
+    // Remove automaticamente se sair da tela (fim da animação)
+    drone.addEventListener("animationend", () => {
+      if (drone.parentNode) drone.parentNode.removeChild(drone);
+    });
+
+    this.els.gameZone.appendChild(drone);
+  },
+  // ============================
 
   animateHit() {
     if (!this.els.villainSprite) return;

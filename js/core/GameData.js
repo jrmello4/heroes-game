@@ -7,8 +7,6 @@ import {
   ArtifactType,
 } from "./Constants.js";
 
-// === DADOS DO JOGO E BALANCEAMENTO ===
-
 export const gameData = {
   score: 0,
   crystals: 0,
@@ -22,7 +20,6 @@ export const gameData = {
   clickDamage: 1,
   autoDamage: 0,
 
-  // Balanceamento Inicial: HP 15
   villainMaxHp: 15,
   villainCurrentHp: 15,
   combo: 0,
@@ -49,7 +46,7 @@ export const gameData = {
       type: AchievementType.KILLS,
       req: 10,
       done: false,
-      reward: 0.1, // +10%
+      reward: 0.1,
     },
     c1000: {
       id: "c1000",
@@ -93,34 +90,57 @@ export const gameData = {
     gym: {
       name: "Academia",
       count: 0,
-      baseCost: 15, // Custo baixo pra começar rápido
-      boost: 1, // +1 Dano (Dobra seu dano inicial)
+      baseCost: 15,
+      boost: 1,
       icon: "fa-dumbbell",
       type: ItemType.UPGRADE,
     },
     brass: {
       name: "Soco Inglês",
       count: 0,
-      baseCost: 150, // Salto para ~10x o anterior
-      boost: 5, // Eficiência: 30 gold/dano
+      baseCost: 150,
+      boost: 5,
       icon: "fa-hand-rock",
       type: ItemType.UPGRADE,
     },
     gadget: {
       name: "Gadgets",
       count: 0,
-      baseCost: 1100, // ~7x o anterior
-      boost: 20, // +20 Dano
+      baseCost: 1100,
+      boost: 20,
       icon: "fa-bullseye",
       type: ItemType.UPGRADE,
     },
     serum: {
       name: "Super Soro",
       count: 0,
-      baseCost: 6500, // ~6x
-      boost: 75, // Grande salto de poder
+      baseCost: 6500,
+      boost: 75,
       icon: "fa-flask",
       type: ItemType.UPGRADE,
+    },
+    // === NOVAS SINERGIAS (FASE 2) ===
+    team_training: {
+      name: "Treino de Equipe",
+      count: 0,
+      baseCost: 2500,
+      icon: "fa-users",
+      type: ItemType.UPGRADE,
+      synergy: true,
+      targetTag: "human",
+      mult: 1.5, // +50%
+      desc: "Humanos +50% DPS",
+    },
+    tech_upgrade: {
+      name: "Suporte Técnico",
+      count: 0,
+      baseCost: 15000,
+      icon: "fa-microchip",
+      type: ItemType.UPGRADE,
+      synergy: true,
+      targetTag: "tech",
+      mult: 1.5,
+      desc: "Tech +50% DPS",
     },
     suit: {
       name: "Traje Tecnológico",
@@ -129,6 +149,17 @@ export const gameData = {
       boost: 350,
       icon: "fa-user-astronaut",
       type: ItemType.UPGRADE,
+    },
+    metagene: {
+      name: "Despertar Meta",
+      count: 0,
+      baseCost: 150000,
+      icon: "fa-dna",
+      type: ItemType.UPGRADE,
+      synergy: true,
+      targetTag: "meta",
+      mult: 1.5,
+      desc: "Metahumanos +50% DPS",
     },
     cosmic: {
       name: "Poder Cósmico",
@@ -144,29 +175,32 @@ export const gameData = {
     kid: {
       name: "Ajudante Mirim",
       count: 0,
-      baseCost: 50, // Acessível nos primeiros 2 minutos
-      dps: 2, // Ajuda, mas não carrega o jogo
+      baseCost: 50,
+      dps: 2,
       icon: "fa-user-ninja",
       color: "text-yellow-500",
       type: ItemType.HERO,
+      tags: ["human"],
     },
     vigilante: {
       name: "Vigilante Noturno",
       count: 0,
-      baseCost: 450, // ~9x o custo
-      dps: 12, // Melhor custo-benefício inicial
+      baseCost: 450,
+      dps: 12,
       icon: "fa-user-secret",
       color: "text-gray-800",
       type: ItemType.HERO,
+      tags: ["human", "tech"], // Híbrido! Recebe bônus dos dois
     },
     speedster: {
       name: "Velocista",
       count: 0,
       baseCost: 2200,
-      dps: 55, // Começa a ficar rápido
+      dps: 55,
       icon: "fa-bolt",
       color: "text-red-500",
       type: ItemType.HERO,
+      tags: ["meta"],
     },
     amazon: {
       name: "Guerreira",
@@ -176,15 +210,17 @@ export const gameData = {
       icon: "fa-shield-alt",
       color: "text-yellow-600",
       type: ItemType.HERO,
+      tags: ["meta", "divine"],
     },
     alien: {
       name: "Caçador Alien",
       count: 0,
       baseCost: 85000,
-      dps: 1200, // Power Spike para chefes difíceis
+      dps: 1200,
       icon: "fa-rocket",
       color: "text-green-400",
       type: ItemType.HERO,
+      tags: ["alien", "tech"],
     },
     wizard: {
       name: "Mago Supremo",
@@ -194,6 +230,7 @@ export const gameData = {
       icon: "fa-hat-wizard",
       color: "text-purple-500",
       type: ItemType.HERO,
+      tags: ["magic"],
     },
   },
 
@@ -289,7 +326,6 @@ export const specialVillains = [
   },
 ];
 
-// === ESSA É A PARTE QUE ESTAVA FALTANDO E CAUSOU O ERRO ===
 export const dailyMissions = [
   {
     id: "kill_20",

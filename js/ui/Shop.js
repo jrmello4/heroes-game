@@ -86,19 +86,28 @@ function generateItemHTML(
 
 export const Shop = {
   render() {
-    // === UPGRADES ===
+    // === UPGRADES (Agora suporta Sinergias) ===
     Object.keys(gameData.upgrades).forEach((k) => {
       const u = gameData.upgrades[k];
-      // MARKET BALANCE: 1.15x
       const cost = Math.floor(u.baseCost * Math.pow(1.15, u.count));
       const canBuy = gameData.score >= cost;
       const itemId = `upgrade-${k}`;
+
+      // Lógica de Descrição Dinâmica
+      let effectText = "";
+      if (u.synergy) {
+        // Se for sinergia, mostra texto personalizado
+        effectText = u.desc || "Bônus Especial";
+      } else {
+        // Se for clique normal
+        effectText = `+${Renderer.formatNumber(u.boost)} Clique`;
+      }
 
       const el = getOrCreateItemElement("panelUpgrades", itemId, () =>
         generateItemHTML(
           itemId,
           u.name,
-          `+${u.boost} Clique`,
+          effectText, // Usa o texto dinâmico
           cost,
           u.count,
           u.icon,
@@ -113,7 +122,6 @@ export const Shop = {
     // === HERÓIS ===
     Object.keys(gameData.heroes).forEach((k) => {
       const h = gameData.heroes[k];
-      // MARKET BALANCE: 1.15x
       const cost = Math.floor(h.baseCost * Math.pow(1.15, h.count));
       const canBuy = gameData.score >= cost;
       const itemId = `hero-${k}`;
@@ -122,7 +130,7 @@ export const Shop = {
         generateItemHTML(
           itemId,
           h.name,
-          `+${h.dps} DPS`,
+          `+${Renderer.formatNumber(h.dps)} DPS`,
           cost,
           h.count,
           h.icon,

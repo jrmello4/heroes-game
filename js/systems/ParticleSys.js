@@ -2,20 +2,12 @@ export const ParticleSys = {
   pool: [],
   maxParticles: 30,
   container: null,
-  flashTimeout: null,
-  lastFlashTime: 0,
 
   init() {
     this.container = document.body;
-    this.pool = [];
-    this.flashTimeout = null;
-    this.lastFlashTime = 0;
-
     for (let i = 0; i < this.maxParticles; i++) {
       const el = document.createElement("div");
-      el.className =
-        "font-comic font-bold absolute pointer-events-none z-50 hidden";
-      el.style.textShadow = "2px 2px 0 #000";
+      el.className = "absolute pointer-events-none z-50 hidden";
       this.container.appendChild(el);
       this.pool.push({ element: el, inUse: false });
     }
@@ -41,15 +33,19 @@ export const ParticleSys = {
       const el = particle.element;
 
       el.style.animation = "none";
-      el.offsetHeight;
+      el.offsetHeight; /* trigger reflow */
       el.style.animation = "floatUp 0.8s ease-out forwards";
 
       el.innerText = text;
-      el.className = `font-comic font-bold absolute pointer-events-none z-50 ${colorClass}`;
+
+      // MUDANÇA AQUI: Trocamos 'font-comic' por 'font-sans' (Roboto) para leitura mais fácil
+      // E garantimos whitespace-nowrap para o texto não quebrar
+      el.className = `font-sans font-black absolute pointer-events-none z-50 whitespace-nowrap ${colorClass}`;
+
       el.style.left = x + "px";
       el.style.top = y + "px";
-      el.style.fontSize = 24 * scale + "px";
-      el.style.textShadow = "2px 2px 0 #000";
+      el.style.fontSize = Math.max(16, 24 * scale) + "px";
+
       el.classList.remove("hidden");
 
       const cleanup = () => {
@@ -81,27 +77,12 @@ export const ParticleSys = {
 
   flashScreen() {
     try {
-      const now = Date.now();
-      if (now - this.lastFlashTime < 300) {
-        return;
-      }
-      this.lastFlashTime = now;
-
       const f = document.getElementById("critFlash");
       if (f) {
-        if (this.flashTimeout) {
-          clearTimeout(this.flashTimeout);
-        }
-
-        f.classList.remove("active");
-        void f.offsetWidth;
-
         f.classList.add("active");
-
-        this.flashTimeout = setTimeout(() => {
+        setTimeout(() => {
           f.classList.remove("active");
-          this.flashTimeout = null;
-        }, 80);
+        }, 100);
       }
     } catch (error) {
       console.warn("ParticleSys: Erro no flash", error);
