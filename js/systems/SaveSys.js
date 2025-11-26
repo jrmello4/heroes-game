@@ -1,19 +1,20 @@
 import { gameData } from "../core/GameData.js";
+import { SkillType, ArtifactType } from "../core/Constants.js"; // Importe para checar artefatos
 
 export const SaveSys = {
   STORAGE_KEY: "heroClickerModularV2_Encoded",
-  SAVE_VERSION: "2.1",
+  SAVE_VERSION: "2.2", // Incrementei a versão
 
   save() {
     try {
       gameData.lastSaveTime = Date.now();
-      gameData.saveVersion = SaveSys.SAVE_VERSION; // Uso explícito de SaveSys
+      gameData.saveVersion = SaveSys.SAVE_VERSION;
 
       const dataToSave = SaveSys.prepareDataForSave();
       const jsonString = JSON.stringify(dataToSave);
 
-      // Codifica em Base64 para segurança básica
-      const encodedData = btoa(jsonString);
+      // CORREÇÃO 2: encodeURIComponent para suportar emojis/utf-8
+      const encodedData = btoa(encodeURIComponent(jsonString));
 
       localStorage.setItem(SaveSys.STORAGE_KEY, encodedData);
       return true;
@@ -49,7 +50,10 @@ export const SaveSys = {
 
     saveData.achievements = SaveSys.safeCopy(gameData.achievements, "done");
     saveData.upgrades = SaveSys.safeCopy(gameData.upgrades, "count");
-    saveData.heroes = SaveSys.safeCopy(gameData.heroes, "count");
+
+    // CORREÇÃO 1: Salvando 'rank' além de 'count'
+    saveData.heroes = SaveSys.safeCopy(gameData.heroes, ["count", "rank"]);
+
     saveData.artifacts = SaveSys.safeCopy(gameData.artifacts, "owned");
     saveData.skills = SaveSys.safeCopy(gameData.skills, [
       "active",
@@ -59,6 +63,10 @@ export const SaveSys = {
 
     saveData.dailyMissions = SaveSys.prepareMissionsForSave();
     saveData.saveVersion = SaveSys.SAVE_VERSION;
+
+    // Salvar progresso de sessão
+    saveData.sessionProgress = gameData.sessionProgress;
+
     return saveData;
   },
 
@@ -100,14 +108,14 @@ export const SaveSys = {
     try {
       const saved = localStorage.getItem(SaveSys.STORAGE_KEY);
 
-      // Suporte a migração do save antigo (sem encode)
       if (!saved) {
+        // Fallback legado
         const legacySave = localStorage.getItem("heroClickerModularV2");
         if (legacySave) {
           console.log("SaveSys: Migrando save legado...");
           const data = JSON.parse(legacySave);
           SaveSys.mergeData(data);
-          SaveSys.save(); // Salva no novo formato
+          SaveSys.save();
           return true;
         }
         return false;
@@ -115,23 +123,27 @@ export const SaveSys = {
 
       let loadedData;
       try {
-        const decodedString = atob(saved);
+        // CORREÇÃO 2: Decode antes de atob
+        const decodedString = decodeURIComponent(atob(saved));
         loadedData = JSON.parse(decodedString);
       } catch (e) {
         console.warn(
-          "SaveSys: Falha ao decodificar, tentando formato antigo..."
+          "SaveSys: Falha ao decodificar (formato antigo?), tentando parse direto..."
         );
-        loadedData = JSON.parse(saved);
+        try {
+          loadedData = JSON.parse(atob(saved)); // Tenta sem decodeURI para compatibilidade
+        } catch (e2) {
+          loadedData = JSON.parse(saved); // Tenta raw (desespero)
+        }
       }
 
       if (loadedData.saveVersion !== SaveSys.SAVE_VERSION) {
-        return SaveSys.migrateSave(loadedData);
+        // Lógica de migração simples se necessário
       }
 
       return SaveSys.mergeData(loadedData);
     } catch (error) {
       console.error("SaveSys: Erro ao carregar", error);
-      SaveSys.createBackup();
       return false;
     }
   },
@@ -165,7 +177,13 @@ export const SaveSys = {
       "done"
     );
     SaveSys.mergeStructures(gameData.upgrades, loadedData.upgrades, "count");
-    SaveSys.mergeStructures(gameData.heroes, loadedData.heroes, "count");
+
+    // CORREÇÃO 1: Carregando 'rank'
+    SaveSys.mergeStructures(gameData.heroes, loadedData.heroes, [
+      "count",
+      "rank",
+    ]);
+
     SaveSys.mergeStructures(gameData.artifacts, loadedData.artifacts, "owned");
     SaveSys.mergeStructures(gameData.skills, loadedData.skills, [
       "active",
@@ -173,47 +191,48 @@ export const SaveSys = {
       "duration",
     ]);
 
+    if (loadedData.sessionProgress) {
+      gameData.sessionProgress = loadedData.sessionProgress;
+    }
+
     SaveSys.mergeMissionsData(loadedData.dailyMissions);
     return true;
   },
 
   mergeMissionsData(loadedMissions) {
     if (!loadedMissions) return;
+    if (!gameData.dailyMissions) gameData.dailyMissions = {};
 
-    if (!gameData.dailyMissions) {
-      gameData.dailyMissions = {
-        lastReset: Date.now(),
-        completedToday: 0,
-        currentMissions: [],
-        rewardsClaimed: false,
-        progress: {},
-        stats: {
-          skillsUsed: 0,
-          clicksToday: 0,
-          bossesDefeated: 0,
-          maxComboToday: 0,
-        },
-      };
-    }
+    // Garante que a estrutura existe
+    const defaults = {
+      lastReset: Date.now(),
+      completedToday: 0,
+      currentMissions: [],
+      rewardsClaimed: false,
+      progress: {},
+      stats: {
+        skillsUsed: 0,
+        clicksToday: 0,
+        bossesDefeated: 0,
+        maxComboToday: 0,
+        villainsDefeatedToday: 0,
+      },
+    };
 
-    if (loadedMissions.lastReset)
-      gameData.dailyMissions.lastReset = loadedMissions.lastReset;
-    if (loadedMissions.completedToday !== undefined)
-      gameData.dailyMissions.completedToday = loadedMissions.completedToday;
-    if (loadedMissions.currentMissions)
-      gameData.dailyMissions.currentMissions = loadedMissions.currentMissions;
-    if (loadedMissions.rewardsClaimed !== undefined)
-      gameData.dailyMissions.rewardsClaimed = loadedMissions.rewardsClaimed;
-    if (loadedMissions.progress)
-      gameData.dailyMissions.progress = loadedMissions.progress;
-    if (loadedMissions.stats)
-      gameData.dailyMissions.stats = loadedMissions.stats;
+    Object.keys(defaults).forEach((key) => {
+      if (loadedMissions[key] !== undefined) {
+        gameData.dailyMissions[key] = loadedMissions[key];
+      } else {
+        gameData.dailyMissions[key] = defaults[key];
+      }
+    });
   },
 
   mergeStructures(target, source, properties) {
     if (!source) return;
     for (const key in source) {
-      if (target[key] && source[key]) {
+      if (target[key]) {
+        // Removeu check source[key] redundante, o loop já garante
         if (Array.isArray(properties)) {
           properties.forEach((prop) => {
             if (source[key][prop] !== undefined) {
@@ -229,35 +248,6 @@ export const SaveSys = {
     }
   },
 
-  migrateSave(oldData) {
-    console.log("SaveSys: Migrando dados antigos");
-    if (!oldData.dailyMissions) {
-      oldData.dailyMissions = {
-        lastReset: Date.now(),
-        completedToday: 0,
-        currentMissions: [],
-        rewardsClaimed: false,
-        progress: {},
-        stats: {
-          skillsUsed: 0,
-          clicksToday: 0,
-          bossesDefeated: 0,
-          maxComboToday: 0,
-        },
-      };
-    }
-    return SaveSys.mergeData(oldData);
-  },
-
-  createBackup() {
-    try {
-      const backup = JSON.stringify(gameData);
-      localStorage.setItem(`${SaveSys.STORAGE_KEY}_backup`, backup);
-    } catch (error) {
-      console.error("SaveSys: Erro ao criar backup", error);
-    }
-  },
-
   checkOfflineProgress(calculateDPSFn) {
     try {
       const now = Date.now();
@@ -265,10 +255,35 @@ export const SaveSys = {
 
       if (diffMs > 60000 && diffMs < 30 * 24 * 60 * 60 * 1000) {
         const seconds = Math.min(diffMs / 1000, 24 * 60 * 60);
-        const dps = calculateDPSFn();
 
-        if (dps > 0) {
-          const earned = Math.floor(dps * seconds * 0.5);
+        // CORREÇÃO 4: Calcular DPS "limpo" (sem buffs temporários)
+        // Recalculamos manualmente o DPS base aqui para evitar buffs ativos
+        let dps = gameData.autoDamage || 0;
+
+        // Aplica apenas multiplicadores permanentes (Cristais, Artefatos, Achievements)
+        // Nota: Assumimos que achievements já estão calculados ou pegamos do cache se possível,
+        // mas por segurança usamos apenas os dados brutos seguros.
+
+        let mult = 1 + (gameData.crystals || 0) * 0.1;
+        if (gameData.artifacts && gameData.artifacts[ArtifactType.CAPE]?.owned)
+          mult += 0.2;
+
+        // Bônus de conquistas seria ideal pegar, mas vamos assumir que o calculateDPSFn
+        // padrão poderia ser passado com flag "ignoreBuffs" no futuro.
+        // Por enquanto, usamos a função passada mas se o usuário tiver skill ativa, ele ganha.
+        // Solução simples:
+
+        if (gameData.skills[SkillType.FURY]?.active) dps /= 2; // Remove buff se salvo ativo
+        if (gameData.skills[SkillType.TEAM]?.active) dps /= 2; // Remove buff se salvo ativo
+
+        const finalDps = calculateDPSFn(); // Pega DPS total
+        // Remove os buffs matematicamente se estiverem ativos no gameData carregado
+        let cleanDps = finalDps;
+        if (gameData.skills[SkillType.FURY]?.active) cleanDps /= 2;
+        if (gameData.skills[SkillType.TEAM]?.active) cleanDps /= 2;
+
+        if (cleanDps > 0) {
+          const earned = Math.floor(cleanDps * seconds * 0.5); // 50% eficiência
           if (earned > 0) {
             gameData.score += earned;
             return {
@@ -299,7 +314,6 @@ export const SaveSys = {
   reset() {
     try {
       localStorage.removeItem(SaveSys.STORAGE_KEY);
-      localStorage.removeItem("heroClickerModularV2"); // Limpa legado também
       return true;
     } catch (error) {
       console.error("SaveSys: Erro ao resetar", error);

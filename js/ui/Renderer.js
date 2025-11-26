@@ -135,7 +135,7 @@ export const Renderer = {
       level: document.getElementById("levelDisplay"),
       levelSettings: document.getElementById("levelDisplaySettings"),
       prestigeGain: document.getElementById("prestigeGain"),
-      prestigeCount: document.getElementById("prestigeCount"),
+      prestigeCount: document.getElementById("prestigeCount"), // Pode ser null no HTML
       crystalCount: document.getElementById("crystalCount"),
       bossTimerText: document.getElementById("bossTimerText"),
       bossTimerBar: document.getElementById("bossTimerBar"),
@@ -220,14 +220,15 @@ export const Renderer = {
       this.els.prestigeGain.innerText = this.formatNumber(pGain);
     }
 
-    // Atualizar cristais
-    if (
-      gameData.crystals > 0 &&
-      this.els.prestigeCount &&
-      this.els.crystalCount
-    ) {
-      this.els.prestigeCount.classList.remove("hidden");
+    // CORREÇÃO CRÍTICA DOS CRISTAIS:
+    // Removemos a dependência do elemento pai 'prestigeCount'
+    if (this.els.crystalCount) {
       this.els.crystalCount.innerText = this.formatNumber(gameData.crystals);
+
+      // Se o elemento pai existir (opcional), removemos o hidden
+      if (this.els.prestigeCount && gameData.crystals > 0) {
+        this.els.prestigeCount.classList.remove("hidden");
+      }
     }
 
     // Atualizar multiplicador de combo
@@ -260,17 +261,14 @@ export const Renderer = {
       if (valueEl) {
         valueEl.textContent = comboSystem.currentMultiplier.toFixed(1);
 
-        // Efeito visual progressivo baseado no multiplicador
         const intensity =
           (comboSystem.currentMultiplier - 1) / (comboSystem.maxMultiplier - 1);
         const glowIntensity = 0.3 + intensity * 0.7;
 
-        // Atualizar cores e efeitos baseado na intensidade
         if (
           comboSystem.currentMultiplier > 3 &&
           this.state.lastComboMultiplier <= 3
         ) {
-          // Efeito especial quando passa de 3x
           this.els.comboMultiplier.style.animation =
             "heroEntrance 0.5s ease-out, comboGlowEffect 1s infinite";
         }
@@ -304,7 +302,6 @@ export const Renderer = {
     if (Math.abs(pct - this.state.lastHP) > 0.1 || pct === 0 || pct === 100) {
       this.els.hpBar.style.width = `${pct}%`;
 
-      // Gradiente dinâmico baseado na vida
       let colorClass = "";
       if (pct > 75) {
         colorClass = "from-green-500 to-emerald-400";
@@ -314,8 +311,6 @@ export const Renderer = {
         colorClass = "from-orange-500 to-red-500";
       } else {
         colorClass = "from-red-600 to-red-700";
-
-        // Piscar quando estiver com pouca vida
         if (pct > 0) {
           this.els.hpBar.style.animation = "pulse 0.5s infinite";
         }
@@ -335,8 +330,6 @@ export const Renderer = {
     if (newHPText !== this.state.lastHPText) {
       if (this.els.hpText) {
         this.els.hpText.innerText = newHPText;
-
-        // Efeito de dano no texto
         if (parseInt(newHPText) < parseInt(this.state.lastHPText)) {
           this.els.hpText.style.animation = "none";
           setTimeout(() => {
@@ -351,16 +344,18 @@ export const Renderer = {
   updateBossTimer(timeLeft) {
     if (!this.els.bossTimerText || !this.els.bossTimerBar) return;
 
-    const normalizedTime = Math.max(0, timeLeft) / 30;
-    this.els.bossTimerText.innerText = Math.ceil(Math.max(0, timeLeft)) + "s";
+    // Garante que o tempo não é negativo na exibição
+    const displayTime = Math.max(0, timeLeft);
+    const normalizedTime = displayTime / 30;
+
+    this.els.bossTimerText.innerText = Math.ceil(displayTime) + "s";
     this.els.bossTimerBar.style.width = `${normalizedTime * 100}%`;
 
-    // Mudar cor baseado no tempo restante
-    if (timeLeft < 10) {
+    if (displayTime < 10) {
       this.els.bossTimerBar.style.background =
         "linear-gradient(90deg, #ff0000 0%, #cc0000 100%)";
       this.els.bossTimerText.style.animation = "pulse 0.5s infinite";
-    } else if (timeLeft < 20) {
+    } else if (displayTime < 20) {
       this.els.bossTimerBar.style.background =
         "linear-gradient(90deg, #ff9900 0%, #ff6600 100%)";
       this.els.bossTimerText.style.animation = "none";
@@ -372,7 +367,7 @@ export const Renderer = {
   },
 
   toggleBossUI(isBoss) {
-    if (!this.els.bossContainer) return;
+    if (!this.els.bossContainer) return; // Removido refresh loop perigoso
     if (isBoss) {
       this.els.bossContainer.classList.remove("hidden");
       this.els.bossContainer.style.animation = "heroEntrance 0.5s ease-out";
@@ -384,7 +379,6 @@ export const Renderer = {
   updateVillainSprite(v, isBoss) {
     if (!this.els.villainName) this.refreshElements();
 
-    // Atualizar nome do vilão
     const villainText = isBoss ? v.name : `Nvl ${gameData.level} ${v.name}`;
     if (this.els.villainName.innerText !== villainText) {
       this.els.villainName.innerText = villainText;
@@ -394,12 +388,10 @@ export const Renderer = {
       }, 10);
     }
 
-    // Atualizar ícone
     if (this.els.villainIcon) {
       this.els.villainIcon.className = `fas ${v.icon}`;
     }
 
-    // Atualizar estilo do sprite
     const newClass = isBoss
       ? `text-[11rem] md:text-[14rem] transition-all duration-500 filter drop-shadow-2xl ${
           v.color || "text-red-600"
@@ -468,22 +460,15 @@ export const Renderer = {
     drone.onpointerdown = (e) => {
       e.preventDefault();
       e.stopPropagation();
-
-      // Efeito visual ao pegar o drone
       drone.style.transform = "scale(1.3) rotate(360deg)";
       drone.style.opacity = "0";
       drone.style.transition = "all 0.3s ease-out";
-
-      // Executar callback
       onCatchCallback(e.clientX, e.clientY);
-
-      // Remover do DOM
       setTimeout(() => {
         if (drone.parentNode) drone.parentNode.removeChild(drone);
       }, 300);
     };
 
-    // Remover automaticamente se sair da tela
     drone.addEventListener("animationend", () => {
       if (drone.parentNode) drone.parentNode.removeChild(drone);
     });
@@ -493,12 +478,9 @@ export const Renderer = {
 
   animateHit() {
     if (!this.els.villainSprite) return;
-
     this.els.villainSprite.classList.remove("villain-hit");
-    void this.els.villainSprite.offsetWidth; // Trigger reflow
+    void this.els.villainSprite.offsetWidth;
     this.els.villainSprite.classList.add("villain-hit");
-
-    // Efeito de partículas no clique
     this.createHitParticles();
   },
 
@@ -506,15 +488,12 @@ export const Renderer = {
     const villainRect = this.els.villainSprite.getBoundingClientRect();
     const centerX = villainRect.left + villainRect.width / 2;
     const centerY = villainRect.top + villainRect.height / 2;
-
-    // Criar partículas de impacto
     for (let i = 0; i < 8; i++) {
       setTimeout(() => {
         const angle = (i / 8) * Math.PI * 2;
         const distance = 50 + Math.random() * 50;
         const px = centerX + Math.cos(angle) * distance;
         const py = centerY + Math.sin(angle) * distance;
-
         this.spawnFloatingText(px, py, "✨", "text-yellow-300 text-2xl", 0.8);
       }, i * 50);
     }
@@ -522,11 +501,8 @@ export const Renderer = {
 
   updateCombo(val, multiplier) {
     if (!this.els.comboContainer) return;
-
     this.els.comboContainer.classList.remove("hidden");
     this.els.comboText.innerText = `x${val}`;
-
-    // Efeitos visuais baseados no combo
     if (val > 10) {
       this.els.comboContainer.style.animation =
         "comboPulse 0.3s infinite alternate, heroEntrance 0.5s ease-out";
@@ -536,15 +512,12 @@ export const Renderer = {
     } else {
       this.els.comboContainer.style.animation = "heroEntrance 0.5s ease-out";
     }
-
-    // Efeito de escala baseado no multiplicador
     if (multiplier > 2) {
       const scale = 1 + (multiplier - 2) * 0.1;
       this.els.comboContainer.style.transform = `scale(${scale}) rotate(${
         (multiplier - 2) * 2
       }deg)`;
     }
-
     if (val > 5) MissionSys.updateProgress("combo", val);
   },
 
@@ -560,9 +533,7 @@ export const Renderer = {
       btn = this.els.skillBtn3;
       bar = this.els.skillBar3;
     }
-
     if (!btn || !bar) return;
-
     if (active) {
       btn.classList.add("pulse-glow");
       btn.style.transform = "scale(1.05)";
@@ -573,8 +544,6 @@ export const Renderer = {
       btn.disabled = true;
       const pct = (cooldown / max) * 100;
       bar.style.height = `${pct}%`;
-
-      // Efeito visual de cooldown
       bar.style.background = `linear-gradient(to top, #666666 ${pct}%, transparent ${pct}%)`;
     } else {
       btn.classList.remove("pulse-glow");
@@ -586,24 +555,17 @@ export const Renderer = {
 
   updateEnvironment(level) {
     if (!this.els.gameZone) return;
-
     const zone = Math.floor((level - 1) / 5);
     const environments = ["bg-city", "bg-sewer", "bg-space"];
     const newEnv = environments[zone % 3];
-
     if (!this.els.gameZone.classList.contains(newEnv)) {
-      // Transição suave entre ambientes
       this.els.gameZone.style.opacity = "0.7";
-
       setTimeout(() => {
         environments.forEach((env) => this.els.gameZone.classList.remove(env));
         this.els.gameZone.classList.add(newEnv);
-
         this.els.gameZone.style.opacity = "1";
         this.els.gameZone.style.transition = "opacity 0.5s ease-in-out";
       }, 300);
-
-      // Feedback visual de mudança de ambiente
       this.spawnFloatingText(
         window.innerWidth / 2,
         window.innerHeight / 2,
@@ -617,9 +579,7 @@ export const Renderer = {
   updateMissions() {
     if (!this.els.missionsContainer) this.refreshElements();
     if (!this.els.missionsContainer) return;
-
     const missions = MissionSys.currentMissions;
-
     if (missions.length === 0) {
       if (
         this.els.missionsContainer.innerHTML.indexOf("Novas missões") === -1
@@ -634,7 +594,6 @@ export const Renderer = {
       }
       return;
     }
-
     if (!document.getElementById("missionsList")) {
       this.els.missionsContainer.innerHTML = `
         <div class="mb-6 hero-entrance">
@@ -649,27 +608,22 @@ export const Renderer = {
         </div>
       `;
     }
-
     const completedCount = MissionSys.getCompletedMissionsCount();
     const countBadge = document.getElementById("missionsCountBadge");
     if (countBadge) {
       countBadge.innerText = `${completedCount}/${missions.length}`;
-
-      // Efeito visual quando todas as missões são completadas
       if (completedCount === missions.length && missions.length > 0) {
         countBadge.style.animation = "pulse 1s infinite";
         countBadge.style.background =
           "linear-gradient(to right, #00ff00, #00cc00)";
       }
     }
-
     missions.forEach((mission) => {
       const progressData = MissionSys.getMissionProgress(mission.id);
       const progress = progressData ? progressData.progress : 0;
       const target = progressData ? progressData.target : mission.target;
       updateMissionDOM(mission, progress, target);
     });
-
     const rewardContainer = document.getElementById("allMissionsReward");
     if (rewardContainer) {
       if (
@@ -698,7 +652,6 @@ export const Renderer = {
     }
   },
 
-  // === FUNÇÃO AUXILIAR: TEXTO FLUTUANTE ===
   spawnFloatingText(x, y, text, colorClass, scale = 1.0) {
     const particle = document.createElement("div");
     particle.style.cssText = `
@@ -715,12 +668,9 @@ export const Renderer = {
       ${colorClass.includes("text-") ? "" : "color: " + colorClass + ";"}
       text-shadow: 2px 2px 0 #000, 4px 4px 0 rgba(0,0,0,0.3);
     `;
-
     particle.className = colorClass;
     particle.innerText = text;
-
     document.body.appendChild(particle);
-
     setTimeout(() => {
       if (particle.parentNode) {
         particle.parentNode.removeChild(particle);

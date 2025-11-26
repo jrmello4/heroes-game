@@ -12,8 +12,12 @@ export const Engine = {
   start() {
     if (this.isRunning) return;
     this.isRunning = true;
+
     this.lastTime = performance.now();
-    requestAnimationFrame((time) => this.loop(time));
+    requestAnimationFrame((time) => {
+      this.lastTime = time;
+      this.loop(time);
+    });
   },
 
   stop() {
@@ -23,13 +27,18 @@ export const Engine = {
   loop(currentTime) {
     if (!this.isRunning) return;
 
-    const dt = (currentTime - this.lastTime) / 1000;
+    // Calcula o tempo decorrido em segundos
+    let dt = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
 
-    if (dt < 1.0) {
-      if (this.updateCallback) this.updateCallback(dt);
-      if (this.renderCallback) this.renderCallback();
-    }
+    // PROTEÇÃO CONTRA TRAVAMENTO:
+    // Se o dt for muito grande (lag ou troca de aba), limitamos a 0.1s.
+    // Isso evita que o jogo "pule" lógica ou congele variáveis.
+    if (dt > 0.1) dt = 0.1;
+
+    // Executa sempre
+    if (this.updateCallback) this.updateCallback(dt);
+    if (this.renderCallback) this.renderCallback();
 
     requestAnimationFrame((time) => this.loop(time));
   },

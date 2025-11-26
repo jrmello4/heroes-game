@@ -3,7 +3,6 @@ import { ErrorHandler } from "./ErrorHandler.js";
 
 export const MissionSys = {
   currentMissions: [],
-  missionProgress: {},
   missionStats: {},
   needsUpdate: true,
 
@@ -33,26 +32,32 @@ export const MissionSys = {
       const shuffled = [...dailyMissions].sort(() => 0.5 - Math.random());
       gameData.dailyMissions.currentMissions = shuffled.slice(0, 3);
 
-      if (!gameData.dailyMissions.progress)
-        gameData.dailyMissions.progress = {};
-
+      // Reseta progresso específico dessas missões
+      gameData.dailyMissions.progress = {};
       gameData.dailyMissions.currentMissions.forEach((mission) => {
-        if (gameData.dailyMissions.progress[mission.id] === undefined) {
-          gameData.dailyMissions.progress[mission.id] = 0;
-        }
+        gameData.dailyMissions.progress[mission.id] = 0;
       });
+
       this.needsUpdate = true;
     }
     this.currentMissions = gameData.dailyMissions.currentMissions;
   },
 
   loadMissionProgress() {
-    this.missionStats = gameData.dailyMissions.stats || {
-      skillsUsed: 0,
-      clicksToday: 0,
-      bossesDefeated: 0,
-      maxComboToday: 0,
-    };
+    // Garante estrutura
+    if (!gameData.dailyMissions.stats) {
+      gameData.dailyMissions.stats = {
+        skillsUsed: 0,
+        clicksToday: 0,
+        bossesDefeated: 0,
+        maxComboToday: 0,
+        villainsDefeatedToday: 0, // Novo campo
+      };
+    }
+    this.missionStats = gameData.dailyMissions.stats;
+    if (this.missionStats.villainsDefeatedToday === undefined) {
+      this.missionStats.villainsDefeatedToday = 0;
+    }
   },
 
   resetDailyMissions() {
@@ -63,6 +68,7 @@ export const MissionSys = {
       clicksToday: 0,
       bossesDefeated: 0,
       maxComboToday: 0,
+      villainsDefeatedToday: 0, // Reset
     };
     this.missionStats = gameData.dailyMissions.stats;
     this.needsUpdate = true;
@@ -82,6 +88,10 @@ export const MissionSys = {
           break;
         case "boss_kill":
           this.missionStats.bossesDefeated += amount;
+          changed = true;
+          break;
+        case "kill": // CORREÇÃO 5: Contagem diária
+          this.missionStats.villainsDefeatedToday += amount;
           changed = true;
           break;
         case "combo":
@@ -107,13 +117,14 @@ export const MissionSys = {
       let newVal = 0;
       switch (mission.type) {
         case "kill":
-          newVal = gameData.villainsDefeated;
+          // CORREÇÃO 5: Usar stats do dia, não total global
+          newVal = this.missionStats.villainsDefeatedToday;
           break;
         case "skill_use":
           newVal = this.missionStats.skillsUsed;
           break;
         case "level_up":
-          newVal = gameData.level;
+          newVal = gameData.level; // Nível é ok ser global
           break;
         case "click":
           newVal = this.missionStats.clicksToday;
@@ -147,11 +158,16 @@ export const MissionSys = {
       if (mission.reward.gold) gameData.score += mission.reward.gold;
 
       gameData.dailyMissions.completedToday++;
+
+      // Remove a missão da lista atual
       gameData.dailyMissions.currentMissions =
         gameData.dailyMissions.currentMissions.filter(
           (m) => m.id !== missionId
         );
       this.currentMissions = gameData.dailyMissions.currentMissions;
+
+      // Limpa o progresso dela pra economizar memória (opcional)
+      delete gameData.dailyMissions.progress[missionId];
 
       this.needsUpdate = true;
       ErrorHandler.showSuccess(
