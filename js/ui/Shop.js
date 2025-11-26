@@ -24,7 +24,6 @@ function updateShopItem(element, cost, level, canBuy, isAscension = false) {
   const costEl = element.querySelector(".item-cost");
   const btn = element.querySelector("button");
 
-  // === LÓGICA DE BOTÃO DINÂMICO (COMPRAR vs ASCENDER) ===
   if (isAscension) {
     if (costEl) costEl.textContent = "ASCENDER";
     if (btn) {
@@ -40,12 +39,12 @@ function updateShopItem(element, cost, level, canBuy, isAscension = false) {
         "text-white",
         "animate-pulse"
       );
-      btn.dataset.action = "ascend"; // Muda a ação do botão
+      btn.dataset.action = "ascend";
     }
   } else {
     if (costEl) costEl.textContent = Renderer.formatNumber(cost);
     if (btn) {
-      btn.dataset.action = "buy"; // Volta para comprar
+      btn.dataset.action = "buy";
       btn.disabled = !canBuy;
       if (canBuy) {
         btn.classList.remove(
@@ -92,7 +91,6 @@ function generateItemHTML(
   colorClass = "text-gray-800",
   rank = 0
 ) {
-  // Gera estrelas baseado no Rank
   const stars = "⭐".repeat(rank);
 
   return `<div id="${id}" class="comic-box p-2 flex items-center gap-2 mb-1 ${
@@ -102,11 +100,11 @@ function generateItemHTML(
             <i class="fas ${icon} ${colorClass}"></i>
         </div>
         <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm truncate leading-none mb-1">
+            <div class="font-bold text-sm truncate leading-none mb-1 text-gray-900">
                 ${name} <span class="text-xs text-yellow-500">${stars}</span>
             </div>
             <div class="text-xs text-blue-600 font-bold">
-                ${effect} <span class="text-gray-400 ml-1 item-level">Nvl ${level}</span>
+                ${effect} <span class="text-gray-600 ml-1 item-level">Nvl ${level}</span>
             </div>
         </div>
         <button 
@@ -126,7 +124,6 @@ function generateItemHTML(
 
 export const Shop = {
   render() {
-    // === UPGRADES ===
     Object.keys(gameData.upgrades).forEach((k) => {
       const u = gameData.upgrades[k];
       const cost = Math.floor(u.baseCost * Math.pow(1.15, u.count));
@@ -156,14 +153,12 @@ export const Shop = {
       if (el) updateShopItem(el, cost, u.count, canBuy);
     });
 
-    // === HERÓIS (COM LÓGICA DE ASCENSÃO) ===
     Object.keys(gameData.heroes).forEach((k) => {
       const h = gameData.heroes[k];
       const cost = Math.floor(h.baseCost * Math.pow(1.15, h.count));
       const canBuy = gameData.score >= cost;
       const itemId = `hero-${k}`;
 
-      // Verifica se pode Ascender (Nível 50)
       const canAscend = h.count >= 50;
 
       const el = getOrCreateItemElement("panelHeroes", itemId, () =>
@@ -178,14 +173,12 @@ export const Shop = {
           k,
           canBuy,
           h.color,
-          h.rank || 0 // Passa o rank para desenhar estrelas
+          h.rank || 0
         )
       );
-      // Passa flag 'canAscend' para mudar o botão
       if (el) updateShopItem(el, cost, h.count, canBuy, canAscend);
     });
 
-    // === ARTEFATOS ===
     const artifactsPanel = document.getElementById("panelArtifacts");
     if (artifactsPanel) {
       let aHtml = "";
@@ -198,7 +191,9 @@ export const Shop = {
                     : "bg-gray-200 opacity-60"
                 }">
                     <i class="fas ${a.icon} ${a.color} text-2xl mb-1"></i>
-                    <div class="font-bold text-xs leading-tight">${a.name}</div>
+                    <div class="font-bold text-xs leading-tight text-gray-900">${
+                      a.name
+                    }</div>
                     <div class="text-[10px] mt-1 font-bold text-gray-600">${
                       a.owned ? a.desc : "???"
                     }</div>
@@ -209,7 +204,6 @@ export const Shop = {
       }
     }
 
-    // === CONQUISTAS ===
     const achievementsPanel = document.getElementById("panelAchievements");
     if (achievementsPanel && gameData.achievements) {
       let achHtml = "";
