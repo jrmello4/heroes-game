@@ -33,10 +33,8 @@ let lastWeakPointTime = 0;
 let lastAchievementCheckTime = 0;
 let lastSpecialVillainCheck = 0;
 
-// === DRONE CONTROLE ===
 let lastDroneSpawn = Date.now();
-let nextDroneInterval = 60000 + Math.random() * 120000; // Entre 1 e 3 minutos
-// ======================
+let nextDroneInterval = 60000 + Math.random() * 120000;
 
 const RENDER_INTERVAL = 1000 / 30;
 const SAVE_INTERVAL = 30000;
@@ -127,6 +125,8 @@ function initBaseStats() {
   for (let k in gameData.heroes) {
     const h = gameData.heroes[k];
     if (!h.baseDps) h.baseDps = h.dps;
+    // Garante que o rank existe (caso venha de save antigo)
+    if (h.rank === undefined) h.rank = 0;
   }
   for (let k in gameData.upgrades) {
     const u = gameData.upgrades[k];
@@ -150,9 +150,12 @@ function recalculateGlobalStats() {
 
   for (let k in gameData.heroes) {
     const h = gameData.heroes[k];
+
+    // 1. Milestone Multiplier (x4 a cada 25)
     const milestones = Math.floor(h.count / 25);
     let multiplier = Math.pow(4, milestones);
 
+    // 2. Synergy Multiplier
     if (h.tags) {
       h.tags.forEach((tag) => {
         if (tagMultipliers[tag]) {
@@ -160,6 +163,11 @@ function recalculateGlobalStats() {
         }
       });
     }
+
+    // 3. RANK MULTIPLIER (ASCENSÃO): x20 POR RANK
+    // Isso faz com que rank 1 seja 20x mais forte, rank 2 seja 400x...
+    const rankMult = Math.pow(20, h.rank || 0);
+    multiplier *= rankMult;
 
     h.dps = h.baseDps * multiplier;
     gameData.autoDamage += h.dps * h.count;
@@ -178,6 +186,7 @@ function recalculateGlobalStats() {
 
   gameData.clickDamage = totalBaseClick;
 }
+
 function checkMilestone(item, prevCount) {
   if (Math.floor(item.count / 25) > Math.floor(prevCount / 25)) {
     const newMult = Math.pow(4, Math.floor(item.count / 25));
@@ -196,6 +205,36 @@ function checkMilestone(item, prevCount) {
     );
   }
 }
+
+// === LÓGICA DE ASCENSÃO ===
+function ascend(type, key) {
+  try {
+    if (type !== ItemType.HERO) return;
+    const hero = gameData.heroes[key];
+
+    if (hero.count < 50) return; // Segurança
+
+    // EFEITOS
+    hero.rank = (hero.rank || 0) + 1;
+    hero.count = 0; // Reseta nível
+
+    AudioSys.playLevelUp();
+
+    ParticleSys.spawnFloatingText(
+      window.innerWidth / 2,
+      window.innerHeight / 2 - 150,
+      `ASCENSÃO!\nRANK ${hero.rank} ALCANÇADO!`,
+      "text-purple-400 text-center font-bold tracking-widest stroke-black stroke-2 drop-shadow-xl",
+      2.0
+    );
+
+    recalculateGlobalStats();
+    Shop.render();
+  } catch (error) {
+    console.warn("Erro ao ascender:", error);
+  }
+}
+// ==========================
 
 function updateAchievementBonusCache() {
   achievementBonusCache = getAchievementBonus();
@@ -252,13 +291,11 @@ function update(dt) {
     applySpecialVillainEffects(dt);
   }
 
-  // === LÓGICA DO DRONE ===
   if (currentTime - lastDroneSpawn > nextDroneInterval) {
     Renderer.spawnDrone(catchDrone);
     lastDroneSpawn = currentTime;
     nextDroneInterval = 60000 + Math.random() * 180000;
   }
-  // ======================
 
   for (let k in gameData.skills) {
     let s = gameData.skills[k];
@@ -299,7 +336,6 @@ function update(dt) {
   }
 }
 
-// === CALLBACK DO DRONE (CORRIGIDO) ===
 function catchDrone(x, y) {
   const type = Math.random() > 0.5 ? "GOLD" : "BUFF";
 
@@ -309,9 +345,6 @@ function catchDrone(x, y) {
     const reward = Math.max(100, Math.floor(gameData.villainMaxHp * 0.2));
     gameData.score += reward;
 
-    // CORREÇÃO VISUAL:
-    // 1. stroke-black e stroke-2: Cria uma borda preta nítida em volta da letra (melhor que shadow)
-    // 2. drop-shadow-md: Sombra leve para destacar do fundo
     ParticleSys.spawnFloatingText(
       x,
       y,
@@ -332,7 +365,6 @@ function catchDrone(x, y) {
     );
   }
 }
-// =========================
 
 function checkSpecialVillain() {
   if (Math.random() < 0.15) {
@@ -804,6 +836,9 @@ function setupEvents() {
 
       if (action === "buy") {
         buy(type, key);
+      } else if (action === "ascend") {
+        // NOVO HANDLER
+        ascend(type, key);
       } else if (action === "claim-mission") {
         claimMissionReward(id);
       } else if (action === "claim-all-missions") {

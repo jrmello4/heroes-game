@@ -119,7 +119,6 @@ export const gameData = {
       icon: "fa-flask",
       type: ItemType.UPGRADE,
     },
-    // === NOVAS SINERGIAS (FASE 2) ===
     team_training: {
       name: "Treino de Equipe",
       count: 0,
@@ -175,6 +174,7 @@ export const gameData = {
     kid: {
       name: "Ajudante Mirim",
       count: 0,
+      rank: 0,
       baseCost: 50,
       dps: 2,
       icon: "fa-user-ninja",
@@ -185,16 +185,18 @@ export const gameData = {
     vigilante: {
       name: "Vigilante Noturno",
       count: 0,
+      rank: 0,
       baseCost: 450,
       dps: 12,
       icon: "fa-user-secret",
       color: "text-gray-800",
       type: ItemType.HERO,
-      tags: ["human", "tech"], // Híbrido! Recebe bônus dos dois
+      tags: ["human", "tech"],
     },
     speedster: {
       name: "Velocista",
       count: 0,
+      rank: 0,
       baseCost: 2200,
       dps: 55,
       icon: "fa-bolt",
@@ -205,6 +207,7 @@ export const gameData = {
     amazon: {
       name: "Guerreira",
       count: 0,
+      rank: 0,
       baseCost: 12000,
       dps: 250,
       icon: "fa-shield-alt",
@@ -215,6 +218,7 @@ export const gameData = {
     alien: {
       name: "Caçador Alien",
       count: 0,
+      rank: 0,
       baseCost: 85000,
       dps: 1200,
       icon: "fa-rocket",
@@ -225,6 +229,7 @@ export const gameData = {
     wizard: {
       name: "Mago Supremo",
       count: 0,
+      rank: 0,
       baseCost: 600000,
       dps: 7500,
       icon: "fa-hat-wizard",

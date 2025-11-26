@@ -17,26 +17,60 @@ function getOrCreateItemElement(containerId, itemId, createFn) {
   return newEl;
 }
 
-function updateShopItem(element, cost, level, canBuy) {
+function updateShopItem(element, cost, level, canBuy, isAscension = false) {
   const levelEl = element.querySelector(".item-level");
   if (levelEl) levelEl.textContent = `Nvl ${level}`;
 
   const costEl = element.querySelector(".item-cost");
-  if (costEl) costEl.textContent = Renderer.formatNumber(cost);
-
   const btn = element.querySelector("button");
-  if (btn) {
-    btn.disabled = !canBuy;
-    if (canBuy) {
-      btn.classList.remove("bg-gray-300");
-      btn.classList.add("bg-yellow-400", "hover:bg-yellow-300");
-    } else {
-      btn.classList.remove("bg-yellow-400", "hover:bg-yellow-300");
-      btn.classList.add("bg-gray-300");
+
+  // === LÓGICA DE BOTÃO DINÂMICO (COMPRAR vs ASCENDER) ===
+  if (isAscension) {
+    if (costEl) costEl.textContent = "ASCENDER";
+    if (btn) {
+      btn.disabled = false;
+      btn.classList.remove(
+        "bg-yellow-400",
+        "hover:bg-yellow-300",
+        "bg-gray-300"
+      );
+      btn.classList.add(
+        "bg-purple-600",
+        "hover:bg-purple-500",
+        "text-white",
+        "animate-pulse"
+      );
+      btn.dataset.action = "ascend"; // Muda a ação do botão
+    }
+  } else {
+    if (costEl) costEl.textContent = Renderer.formatNumber(cost);
+    if (btn) {
+      btn.dataset.action = "buy"; // Volta para comprar
+      btn.disabled = !canBuy;
+      if (canBuy) {
+        btn.classList.remove(
+          "bg-gray-300",
+          "bg-purple-600",
+          "hover:bg-purple-500",
+          "text-white",
+          "animate-pulse"
+        );
+        btn.classList.add("bg-yellow-400", "hover:bg-yellow-300");
+      } else {
+        btn.classList.remove(
+          "bg-yellow-400",
+          "hover:bg-yellow-300",
+          "bg-purple-600",
+          "hover:bg-purple-500",
+          "text-white",
+          "animate-pulse"
+        );
+        btn.classList.add("bg-gray-300");
+      }
     }
   }
 
-  if (canBuy) {
+  if (canBuy || isAscension) {
     element.classList.remove("bg-gray-100");
     element.classList.add("bg-white");
   } else {
@@ -55,8 +89,12 @@ function generateItemHTML(
   type,
   key,
   canBuy,
-  colorClass = "text-gray-800"
+  colorClass = "text-gray-800",
+  rank = 0
 ) {
+  // Gera estrelas baseado no Rank
+  const stars = "⭐".repeat(rank);
+
   return `<div id="${id}" class="comic-box p-2 flex items-center gap-2 mb-1 ${
     canBuy ? "bg-white" : "bg-gray-100"
   }">
@@ -64,7 +102,9 @@ function generateItemHTML(
             <i class="fas ${icon} ${colorClass}"></i>
         </div>
         <div class="flex-1 min-w-0">
-            <div class="font-bold text-sm truncate leading-none mb-1">${name}</div>
+            <div class="font-bold text-sm truncate leading-none mb-1">
+                ${name} <span class="text-xs text-yellow-500">${stars}</span>
+            </div>
             <div class="text-xs text-blue-600 font-bold">
                 ${effect} <span class="text-gray-400 ml-1 item-level">Nvl ${level}</span>
             </div>
@@ -86,20 +126,17 @@ function generateItemHTML(
 
 export const Shop = {
   render() {
-    // === UPGRADES (Agora suporta Sinergias) ===
+    // === UPGRADES ===
     Object.keys(gameData.upgrades).forEach((k) => {
       const u = gameData.upgrades[k];
       const cost = Math.floor(u.baseCost * Math.pow(1.15, u.count));
       const canBuy = gameData.score >= cost;
       const itemId = `upgrade-${k}`;
 
-      // Lógica de Descrição Dinâmica
       let effectText = "";
       if (u.synergy) {
-        // Se for sinergia, mostra texto personalizado
         effectText = u.desc || "Bônus Especial";
       } else {
-        // Se for clique normal
         effectText = `+${Renderer.formatNumber(u.boost)} Clique`;
       }
 
@@ -107,7 +144,7 @@ export const Shop = {
         generateItemHTML(
           itemId,
           u.name,
-          effectText, // Usa o texto dinâmico
+          effectText,
           cost,
           u.count,
           u.icon,
@@ -119,12 +156,15 @@ export const Shop = {
       if (el) updateShopItem(el, cost, u.count, canBuy);
     });
 
-    // === HERÓIS ===
+    // === HERÓIS (COM LÓGICA DE ASCENSÃO) ===
     Object.keys(gameData.heroes).forEach((k) => {
       const h = gameData.heroes[k];
       const cost = Math.floor(h.baseCost * Math.pow(1.15, h.count));
       const canBuy = gameData.score >= cost;
       const itemId = `hero-${k}`;
+
+      // Verifica se pode Ascender (Nível 50)
+      const canAscend = h.count >= 50;
 
       const el = getOrCreateItemElement("panelHeroes", itemId, () =>
         generateItemHTML(
@@ -137,10 +177,12 @@ export const Shop = {
           ItemType.HERO,
           k,
           canBuy,
-          h.color
+          h.color,
+          h.rank || 0 // Passa o rank para desenhar estrelas
         )
       );
-      if (el) updateShopItem(el, cost, h.count, canBuy);
+      // Passa flag 'canAscend' para mudar o botão
+      if (el) updateShopItem(el, cost, h.count, canBuy, canAscend);
     });
 
     // === ARTEFATOS ===
